@@ -1,4 +1,4 @@
-#include<iostream>
+// #include<iostream>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -8,6 +8,7 @@
 #include <netinet/in.h>
 
 #define PORT 9512
+#define BUFFER_SIZE 256
 
 //Global paramaters
 int sockfd, newsockfd, portno;
@@ -65,7 +66,18 @@ void onRecieve(){
         }
 }
 
+void fileRecieve(char *filename){
+    FILE *fp;
+    int n;
+    fp = fopen(filename, "w");
+    printf("Downloading... %s",filename);
+    bzero(buffer,BUFFER_SIZE);
+    while (n = read(newsockfd,buffer,BUFFER_SIZE) > 0 ){
+        n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+        }
+    fclose(fp);
 
+}
 
 void closeConnection(){
     close(newsockfd);
@@ -75,7 +87,8 @@ void closeConnection(){
 
 int main(int argc, char *argv[]){
      establishConenction();
-     onRecieve();
+     char filename[]="a.txt";
+     fileRecieve(filename);
      closeConnection();
      return 0;
 }

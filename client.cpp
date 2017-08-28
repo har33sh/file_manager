@@ -1,4 +1,6 @@
+
 #include <stdio.h>
+#include <iostream>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
@@ -6,9 +8,23 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#include <string>
+#include <vector>
+#include <wordexp.h>//for word expansions
+#include <utility>
+#include <errno.h>
+#include <arpa/inet.h>
+#include <iterator>
+#include <cctype>
+#include <algorithm>
+#include <sstream>
+#include <fstream>
+#include <ctime>
+#include <fcntl.h>
 
 #define HOST "10.129.23.200"
 #define PORT 9512
+#define BUFFER_SIZE 256
 
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
@@ -39,6 +55,26 @@ void establishConenction(){
     error("ERROR connecting");
 }
 
+int sendFile(char *filename){
+    FILE *f;
+    unsigned long fsize;
+    f = fopen(filename, "r");
+    if (f == NULL){
+        printf("File not found!\n");
+        return 1;
+        }
+    else{
+        printf("Uploading the file......\n");
+        while (!feof(f)){
+            n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+            int bytes_written = write(sockfd, buffer, n);
+            }
+        printf("%s File Successfully uploaded\n", filename);
+        }
+    fclose(f);
+    return 0;
+}
+
 int sendMessage(char *msg){
         n = write(sockfd,msg,strlen(buffer));
         if (n < 0)
@@ -50,19 +86,22 @@ int sendMessage(char *msg){
         return atoi(buffer);
 }
 
+
 void closeConnection(){
     close(sockfd);
 }
 
 int main(int argc, char *argv[]){
     establishConenction();
-    while(true){
-        printf("Please enter the message: ");
-        bzero(buffer,256);
-        fgets(buffer,255,stdin);
-        int response=sendMessage(buffer);
-        printf("Response code %d \n",response);
-    }
+    // while(true){
+    //     printf("Please enter the message: ");
+    //     bzero(buffer,256);
+    //     fgets(buffer,255,stdin);
+    //     int response=sendMessage(buffer);
+    //     printf("Response code %d \n",response);
+    // }
+    char filename[]="/home/ghost/Downloads/a.txt";
+    sendFile(filename);
     closeConnection();
     return 0;
 }
