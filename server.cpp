@@ -7,13 +7,14 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PORT 9512
+#define PORT 9511
 #define BUFFER_SIZE 256
 
 //Global paramaters
 int sockfd, newsockfd, portno;
 socklen_t clilen;
 char buffer[256];
+char response_message[100];
 struct sockaddr_in serv_addr, cli_addr;
 
 using namespace std;
@@ -46,25 +47,28 @@ void establishConenction(){
         error("ERROR on accept");
 }
 
-//process message and sent response
-int onMessage(char *buffers){
-    printf("Here is the message: %s\n",buffer);
-    return 0;
+//////////////////////////////////THINGS TO BE CHANGED
+bool checkusername_avail(char *username){
+    return true;
 }
 
-//need to add case statement and add a way to close the connenction
-void onRecieve(){
-        int n;
-        while(true){
-            bzero(buffer,256);
-            n = read(newsockfd,buffer,255);
-            if (n < 0) error("ERROR reading from socket");
-            char response[3];
-            sprintf(response,"%d",onMessage(buffer));
-            n = write(newsockfd,response,strlen(response));
-            if (n < 0) error("ERROR writing to socket");
-        }
+bool reg(char *username,char *password){
+    return true;
 }
+
+bool login(char *username,char *password){
+    return true;
+}
+
+
+void load_file_list(){
+    //loads file load_file_list
+    snprintf(response_message, sizeof(response_message), "FILE 1 FILE 2....");
+}
+////////////////////////////////////////////////////////
+
+
+
 
 void fileRecieve(char *filename){
     FILE *fp;
@@ -76,7 +80,7 @@ void fileRecieve(char *filename){
         n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
         }
     fclose(fp);
-
+    snprintf(response_message, sizeof(response_message), "Received Successfully");
 }
 
 void closeConnection(){
@@ -85,10 +89,58 @@ void closeConnection(){
 }
 
 
+//process message and sent response
+void onMessage(char *buffers){
+    printf("Here is the message: %s\n",buffer);
+    int choice=  atoi(strtok(buffer, ","));
+    char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
+    char *msg2=strtok(NULL, ",");
+    snprintf(response_message, sizeof(response_message), "--No message--");
+    switch (choice) {
+        case 1: if(checkusername_avail(msg1))
+                    snprintf(response_message, sizeof(response_message), "true");
+                else
+                    snprintf(response_message, sizeof(response_message), "false");
+                break;
+        case 2: if (reg(msg1,msg2))
+                    snprintf(response_message, sizeof(response_message), "true");
+                 else
+                    snprintf(response_message, sizeof(response_message), "false");
+                 break;
+        case 3: if (login(msg1,msg2))
+                    snprintf(response_message, sizeof(response_message), "true");
+                 else
+                    snprintf(response_message, sizeof(response_message), "false");
+                 break;
+        case 4: fileRecieve(msg1);break;
+        case 5: load_file_list(); break;
+        case 6:  printf("File Request %s \n",msg1 );break;
+        default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
+
+    }
+
+    printf("%d %s %s\n",choice,msg1,msg2 );
+}
+
+//need to add case statement and add a way to close the connenction
+void onRecieve(){
+        int n;
+        while(true){
+            bzero(buffer,256);
+            n = read(newsockfd,buffer,255);
+            if (n < 0) error("ERROR reading from socket");
+            onMessage(buffer);
+            n = write(newsockfd,response_message,strlen(response_message));
+            if (n < 0) error("ERROR writing to socket");
+        }
+}
+
+
 int main(int argc, char *argv[]){
      establishConenction();
-     char filename[]="a.txt";
-     fileRecieve(filename);
+     onRecieve();
+    //  char filename[]="a.txt";
+    //  fileRecieve(filename);
      closeConnection();
      return 0;
 }
