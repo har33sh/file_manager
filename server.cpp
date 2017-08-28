@@ -88,6 +88,10 @@ void closeConnection(){
     close(sockfd);
 }
 
+void force_send_response(){ //Clients waits for message, can be used to send dummy messges
+    int _=write(newsockfd,response_message,strlen(response_message));
+}
+
 
 //process message and sent response
 void onMessage(char *buffers){

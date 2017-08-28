@@ -30,7 +30,7 @@
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
 struct hostent *server;
-char buffer[256],send_message[100];
+char buffer[256],send_message[100],received_message[100];
 
 void error(const char *msg){
     perror(msg);
@@ -60,6 +60,7 @@ void establishConenction(){
 
 void onMessage(char *buffer){
     printf("---> %s\n",buffer );
+    snprintf(received_message,sizeof(received_message),"%s",buffer);
 }
 
 
@@ -143,13 +144,13 @@ void reg(){
     scanf("%s",username );
     snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
     sendMessage();
-    // availablity=bool(recieveMessage());
+    availablity=bool(received_message);
     while(!availablity){
         printf("%s already taken, try a differnt one...\n Enter username :",username );
         scanf("%s",username );
         snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
         sendMessage();
-        // availablity=sendMessage(1,username);
+        availablity=bool(received_message);
     }
     printf("Enter password :");
     scanf("%s",password );
@@ -167,6 +168,7 @@ bool login(){
     scanf("%s",password );
     snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
     sendMessage();
+    auth=bool(received_message);
     while(!auth){
         printf("Bad username or password \nTry again ? [Y/n] : ");
         scanf("%s",yes_or_no);
@@ -177,17 +179,19 @@ bool login(){
             scanf("%s",password );
             snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
             sendMessage();
+            auth=bool(received_message);
         }
         else
             return auth;
     }
+    printf("### user %s Successfully Authenticated  ###\n",username );
     return auth;
 }
 
 //later modify with private file storage //changet the return type of the login to username if the auth is Success
 void file_menu(){
     int choice;
-    printf("1.Upload\n2.Download\n3.logout\nEnter your choice : ");
+    printf("1. Upload\n2. Download\n3. Logout\nEnter your choice : ");
     scanf("%d",&choice);
     switch (choice) {
         case 1: upload(); break;
@@ -203,7 +207,7 @@ void menu(){
     int choice;
     printf("______________________________________________FILE SERVER______________________________________________\n" );
     while (true) {
-        printf("1. Register \n2.Login\n3.Exit\nEnter your Choice : ");
+        printf("1. Register \n2. Login\n3. Exit\nEnter your Choice : ");
         scanf("%d",&choice);
 
         switch (choice) {
