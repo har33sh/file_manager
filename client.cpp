@@ -23,8 +23,15 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
+
+
+
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+////////////////////////////////   Network Layer\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+
 #define HOST "10.129.23.200"
-#define PORT 9511
+#define PORT 9555
 #define BUFFER_SIZE 256
 
 int sockfd, portno, n;
@@ -59,14 +66,14 @@ void establishConenction(){
 
 
 void onMessage(char *buffer){
-    printf("---> %s\n",buffer );
+    printf("-----> %s\n",buffer );
     snprintf(received_message,sizeof(received_message),"%s",buffer);
 }
 
 
 //isolating socket modules from the other modules
 int sendMessage(){
-        printf("<----- : %s\n",send_message );
+        printf("<-----  %s\n",send_message );
         n = write(sockfd,send_message,strlen(send_message));
         if (n < 0)
         error("ERROR writing to socket");
@@ -79,32 +86,47 @@ int sendMessage(){
 }
 
 
+void closeConnection(){
+    close(sockfd);
+    printf("//////////////////////////////////////////////////////////////////////////////\n");
+    printf("///////////////////////////        Thank You           ///////////////////////\n");
+    printf("//////////////////////////////////////////////////////////////////////////////\n");
+}
 
+
+
+
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//////////////////////////////// Data Access Layer///////////////////////////////////////////////
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 //upload file
 int upload(){
-    char filename[20],path[100];
+    char filename[20],save_as[100];
     printf("Enter the path of the file : " );
-    scanf("%s",path );
-    printf("Save file as: ");
     scanf("%s",filename );
-    snprintf(send_message, sizeof(send_message), "%s,%s", "4",filename);
+    printf("Save file as: ");
+    scanf("%s",save_as );
+    snprintf(send_message, sizeof(send_message), "%s,%s", "4",save_as);
     sendMessage();
     FILE *f;
     unsigned long fsize;
     f = fopen(filename, "r");
     if (f == NULL){
-        printf("File not found!\n");
+        printf("%s File not found!\n",filename);
         return 1;
     }
     else{
         printf("Uploading the file......\n");
         while (!feof(f)){
             n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+            printf("<===== %d\n", n);
             int bytes_written = write(sockfd, buffer, n);
             }
         printf("%s File Successfully uploaded\n", filename);
     }
+    // bzero(buffer,BUFFER_SIZE);
+    // int bytes_written = write(sockfd, buffer,BUFFER_SIZE );
     fclose(f);
     return 0;
 }
@@ -131,11 +153,9 @@ void download(){
     fclose(fp);
 }
 
-
-void closeConnection(){
-    close(sockfd);
-}
-
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
+//////////////////////////////// Presentation Layer///////////////////////////////////////////////
+//\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 void reg(){
     bool availablity=false;
@@ -154,6 +174,7 @@ void reg(){
     }
     printf("Enter password :");
     scanf("%s",password );
+    printf("%s registered Successfully\n",username );
     snprintf(send_message, sizeof(send_message), "%s,%s,%s", "2",username,password);
     sendMessage();
 }
@@ -191,13 +212,15 @@ bool login(){
 //later modify with private file storage //changet the return type of the login to username if the auth is Success
 void file_menu(){
     int choice;
-    printf("1. Upload\n2. Download\n3. Logout\nEnter your choice : ");
-    scanf("%d",&choice);
-    switch (choice) {
-        case 1: upload(); break;
-        case 2: download(); break;
-        case 3: return;
-        default: printf("Invalid Option selected..!! \n");
+    while (true) {
+        printf("1. Upload\n2. Download\n3. Logout\nEnter your choice : ");
+        scanf("%d",&choice);
+        switch (choice) {
+            case 1: upload(); break;
+            case 2: download(); break;
+            case 3: return;
+            default: printf("Invalid Option selected..!! \n");
+        }
     }
 }
 
@@ -205,11 +228,12 @@ void menu(){
     snprintf(send_message, sizeof(send_message), "%s,%s", "1","username");
     printf("%s\n",send_message );
     int choice;
-    printf("______________________________________________FILE SERVER______________________________________________\n" );
+    printf("//////////////////////////////////////////////////////////////////////////////\n");
+    printf("///////////////////////////        FILE SERVER         ///////////////////////\n");
+    printf("//////////////////////////////////////////////////////////////////////////////\n");
     while (true) {
         printf("1. Register \n2. Login\n3. Exit\nEnter your Choice : ");
         scanf("%d",&choice);
-
         switch (choice) {
             case 1: reg(); break;
             case 2: if(login()) file_menu(); break;
@@ -219,15 +243,12 @@ void menu(){
     }
 }
 
+
+
+//////////////////////////////// MAIN
+
 int main(int argc, char *argv[]){
     establishConenction();
-    // while(true){
-    //     printf("Please enter the message: ");
-    //     bzero(buffer,256);
-    //     fgets(buffer,255,stdin);
-    //     int response=sendMessage(buffer);
-    //     printf("Response code %d \n",response);
-    // }
     // upload();
     menu();
     closeConnection();

@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PORT 9511
+#define PORT 9555
 #define BUFFER_SIZE 256
 
 //Global paramaters
@@ -64,6 +64,7 @@ bool login(char *username,char *password){
 void load_file_list(){
     //loads file load_file_list
     snprintf(response_message, sizeof(response_message), "FILE 1 FILE 2....");
+    return;
 }
 ////////////////////////////////////////////////////////
 
@@ -71,15 +72,19 @@ void load_file_list(){
 
 
 void fileRecieve(char *filename){
+    printf("Receiving... %s\n",filename);
     FILE *fp;
     int n;
     fp = fopen(filename, "w");
-    printf("Downloading... %s",filename);
     bzero(buffer,BUFFER_SIZE);
-    while (n = read(newsockfd,buffer,BUFFER_SIZE) > 0 ){
+    n = read(newsockfd,buffer,BUFFER_SIZE) ;
+    while ( n>0){
         n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+        n = read(newsockfd,buffer,BUFFER_SIZE) ;
+        printf(" == > %d\n",n );
         }
     fclose(fp);
+    printf("%s Successfully received\n",filename );
     snprintf(response_message, sizeof(response_message), "Received Successfully");
 }
 
@@ -89,13 +94,15 @@ void closeConnection(){
 }
 
 void force_send_response(){ //Clients waits for message, can be used to send dummy messges
-    int _=write(newsockfd,response_message,strlen(response_message));
+    snprintf(response_message, sizeof(response_message), "Let the force be with you");
+    int _=write(newsockfd,response_message,sizeof(response_message));
+    printf("Force Message : %s\n",response_message );
 }
 
 
 //process message and sent response
 void onMessage(char *buffers){
-    printf("Here is the message: %s\n",buffer);
+    printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
     char *msg2=strtok(NULL, ",");
@@ -116,7 +123,7 @@ void onMessage(char *buffers){
                  else
                     snprintf(response_message, sizeof(response_message), "false");
                  break;
-        case 4: fileRecieve(msg1);break;
+        case 4: force_send_response();fileRecieve(msg1); break;
         case 5: load_file_list(); break;
         case 6:  printf("File Request %s \n",msg1 );break;
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
@@ -135,16 +142,18 @@ void onRecieve(){
             if (n < 0) error("ERROR reading from socket");
             onMessage(buffer);
             n = write(newsockfd,response_message,strlen(response_message));
+            printf("Message Send: %s\n",response_message );
             if (n < 0) error("ERROR writing to socket");
         }
 }
 
 
+
 int main(int argc, char *argv[]){
      establishConenction();
-     onRecieve();
     //  char filename[]="a.txt";
     //  fileRecieve(filename);
+     onRecieve();
      closeConnection();
      return 0;
 }
