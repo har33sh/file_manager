@@ -20,6 +20,7 @@ char response_message[100];
 struct sockaddr_in serv_addr, cli_addr;
 char file_dir[]="/home/ghost/Downloads";
 char file_list[]="/home/ghost/file_list.txt";
+char file_names[100][100];
 
 using namespace std;
 
@@ -70,8 +71,26 @@ void force_send_response(){ //Clients waits for message, can be used to send dum
     printf("Force Message : %s\n",response_message );
 }
 
+void update_file_list(){
+    //read the files in the entire directory and saves it in a array and saves it in file_list
+    DIR *d;
+    struct dirent *dir;
+    d = opendir(file_dir);
+    FILE *f;
+    f=fopen(file_list,"w");
+    int i=1;
+    while ((dir = readdir(d)) != NULL){
+      snprintf(file_names[i],sizeof(file_names[i]),"%s",dir->d_name);
+      fprintf(f, "%d : %s\n",i,file_names[i] );
+      i++;
+    }
+    closedir(d);
+    fclose(f);
+
+}
+
 void send_file_list(){
-    //need to update the file lets call it update_file_avail()
+
     printf("Sending the file list ......\n");
     FILE *f;
     unsigned long fsize;
@@ -97,7 +116,9 @@ void fileRecieve(char *filename){
     printf("Receiving... %s\n",filename);
     FILE *fp;
     int n;
-    fp = fopen(filename, "wb");
+    char file_location[100];
+    snprintf(file_location,sizeof(file_location),"%s/%s",file_dir,filename);
+    fp = fopen(file_location, "wb");
     bzero(buffer,BUFFER_SIZE);
     n = read(newsockfd,buffer,BUFFER_SIZE) ;
     while (n == BUFFER_SIZE ){
@@ -110,7 +131,7 @@ void fileRecieve(char *filename){
     bzero(buffer,BUFFER_SIZE);
     // printf("=cc==> %d  %d\n",1,n );
     fclose(fp);
-    printf("%s Successfully received\n",filename );
+    printf("%s Successfully received\n",file_location );
     snprintf(response_message, sizeof(response_message), "Received Successfully");
 }
 
@@ -124,19 +145,17 @@ void closeConnection(){
 
 void fileSend(){
     send_file_list();
-    printf("Client Downloading file\n" );
     int x =read(newsockfd,buffer,255);
     int choice=  atoi(strtok(buffer, ","));
     printf("input %d\n",choice );
-
-
-
     FILE *f;
-    char filename[]="/home/ghost/SCC305.png";
+    char filename[100];
+    snprintf(filename,sizeof(filename),"%s/%s",file_dir,file_names[choice]);
+    printf("Client Downloading file......%s\n",filename);
+
     f = fopen(filename, "rb");
     unsigned long fsize;
     bzero(buffer,BUFFER_SIZE);
-    printf("Sending the file......\n");
     bzero(buffer,BUFFER_SIZE);
     int n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
     while (n>0){
@@ -144,7 +163,7 @@ void fileSend(){
         bzero(buffer,BUFFER_SIZE);
         n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
     }
-    printf("%s File Send Successfully uploaded\n", filename);
+    printf("%s File Send Successfully uploaded\n", file_names[choice]);
 
     bzero(buffer,BUFFER_SIZE);
     fclose(f);
@@ -154,6 +173,7 @@ void fileSend(){
 
 //process message and sent response
 void onMessage(char *buffers){
+    update_file_list();
     printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
@@ -177,6 +197,7 @@ void onMessage(char *buffers){
                  break;
         case 4: force_send_response();fileRecieve(msg1); break;
         case 5: fileSend();break;
+        case 0: closeConnection();exit(0);
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
 
     }
@@ -202,8 +223,7 @@ void onRecieve(){
 
 int main(int argc, char *argv[]){
      establishConenction();
-     fileSend();
-    //  onRecieve();
+     onRecieve();
      closeConnection();
      return 0;
 }

@@ -89,6 +89,8 @@ int sendMessage(){
 
 
 void closeConnection(){
+    snprintf(send_message, sizeof(send_message), "%s,%s", "0","Byee..");
+    int n = write(sockfd,send_message,strlen(send_message));
     close(sockfd);
     printf("//////////////////////////////////////////////////////////////////////////////\n");
     printf("///////////////////////////        Thank You           ///////////////////////\n");
@@ -138,8 +140,8 @@ int upload(){
 
 
 void load_file_list(){
-    // snprintf(send_message, sizeof(send_message), "%s,%s", "5","Send me the file_list");
-    // sendMessage();
+    snprintf(send_message, sizeof(send_message), "%s,%s", "5","Send me the file_list");
+    int bytes_writen = write(sockfd,send_message,strlen(send_message));
     if(debug)
         printf("Receiving file_list... \n");
     FILE *fp;
@@ -151,8 +153,7 @@ void load_file_list(){
         int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
         bzero(buffer,BUFFER_SIZE);
         n = read(sockfd,buffer,BUFFER_SIZE) ;
-        // printf("===> %d  %d\n",x,n );
-        }
+    }
     int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
     bzero(buffer,BUFFER_SIZE);
     // printf("=cc==> %d  %d\n",1,n );
@@ -160,28 +161,35 @@ void load_file_list(){
     if(debug)
         printf("Successfully received file list\n");
     printf("\n##### File List ####\n");
-    //SHOW FILE LIST HERE
+    char c;
+    fp = fopen(".file_list.txt", "r");
+    while ((c=fgetc(fp))!=EOF)
+      printf("%c",c );
+    fclose(fp);
+    printf("\n####################\n");
 }
 
 //needs to be checked if it works
 void download(){
     load_file_list();
-
     int choice;
     char save_file_as[100];
     printf("Enter the file number to download :" );
     scanf(" %d",&choice );
-    snprintf(send_message, sizeof(send_message), "%d",choice);
     printf("Save file as :" );
     scanf("%s",save_file_as);
+    printf("Downloading... %s\n",save_file_as);
+    snprintf(send_message, sizeof(send_message), "%d",choice);
     int bytes_written = write(sockfd,send_message,strlen(send_message));
     FILE *fp;
     int n;
-    fp = fopen(save_file_as, "w");
-    printf("Downloading... %s",save_file_as);
+    fp = fopen(save_file_as, "wb");
     bzero(buffer,BUFFER_SIZE);
-    while (n = read(sockfd,buffer,BUFFER_SIZE) > 0 ){
+    n = read(sockfd,buffer,BUFFER_SIZE) ;
+    while (n==BUFFER_SIZE ){
         n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+        bzero(buffer,BUFFER_SIZE);
+        n = read(sockfd,buffer,BUFFER_SIZE) ;
         }
     fclose(fp);
     printf("Downloaded %s\n",save_file_as );
@@ -271,7 +279,7 @@ void menu(){
         switch (choice) {
             case 1: reg(); break;
             case 2: if(login()) file_menu(); break;
-            case 3: return;
+            case 3: closeConnection();exit(0);
             default: printf("Invalid Option selected..!! \n");
         }
     }
@@ -283,8 +291,7 @@ void menu(){
 
 int main(int argc, char *argv[]){
     establishConenction();
-    download();
-    // menu();
+    menu();
     closeConnection();
     return 0;
 }
