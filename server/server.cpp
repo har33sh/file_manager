@@ -7,6 +7,9 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include<dirent.h>
+#include <string>
+#include "db.h"
+using namespace std;
 
 
 #define PORT 9555
@@ -52,18 +55,6 @@ void establishConenction(){
         error("ERROR on accept");
 }
 
-//////////////////////////////////THINGS TO BE CHANGED
-bool checkusername_avail(char *username){
-    return true;
-}
-
-bool reg(char *username,char *password){
-    return true;
-}
-
-bool login(char *username,char *password){
-    return true;
-}
 
 void force_send_response(){ //Clients waits for message, can be used to send dummy messges
     snprintf(response_message, sizeof(response_message), "Let the force be with you");
@@ -180,17 +171,17 @@ void onMessage(char *buffers){
     char *msg2=strtok(NULL, ",");
     snprintf(response_message, sizeof(response_message), "--No message--");
     switch (choice) {
-        case 1: if(checkusername_avail(msg1))
+        case 1: if(usernameAvailable(msg1))
                     snprintf(response_message, sizeof(response_message), "true");
                 else
                     snprintf(response_message, sizeof(response_message), "false");
                 break;
-        case 2: if (reg(msg1,msg2))
+        case 2: if (!createUser(msg1,msg2))
                     snprintf(response_message, sizeof(response_message), "true");
                  else
                     snprintf(response_message, sizeof(response_message), "false");
                  break;
-        case 3: if (login(msg1,msg2))
+        case 3: if (authenticateUser(msg1,msg2))
                     snprintf(response_message, sizeof(response_message), "true");
                  else
                     snprintf(response_message, sizeof(response_message), "false");

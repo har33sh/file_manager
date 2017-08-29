@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
-bool debug =true;
+bool debug =false;
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -206,13 +206,16 @@ void reg(){
     scanf("%s",username );
     snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
     sendMessage();
-    availablity=bool(received_message);
+    if(received_message[0]=='t')
+      availablity=true;
+    printf("==>%s %d\n",received_message,availablity );
     while(!availablity){
         printf("%s already taken, try a differnt one...\n Enter username :",username );
         scanf("%s",username );
         snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
         sendMessage();
-        availablity=bool(received_message);
+        if(received_message[0]=='t')
+          availablity=true;
     }
     printf("Enter password :");
     scanf("%s",password );
@@ -231,7 +234,8 @@ bool login(){
     scanf("%s",password );
     snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
     sendMessage();
-    auth=bool(received_message);
+    if(received_message[0]=='t')
+      auth=true;
     while(!auth){
         printf("Bad username or password \nTry again ? [Y/n] : ");
         scanf("%s",yes_or_no);
@@ -242,7 +246,8 @@ bool login(){
             scanf("%s",password );
             snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
             sendMessage();
-            auth=bool(received_message);
+            if(received_message[0]=='t')
+              auth=true;
         }
         else
             return auth;
