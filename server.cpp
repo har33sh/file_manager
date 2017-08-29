@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#define PORT 9555
+#define PORT 9556
 #define BUFFER_SIZE 256
 
 //Global paramaters
@@ -75,14 +75,18 @@ void fileRecieve(char *filename){
     printf("Receiving... %s\n",filename);
     FILE *fp;
     int n;
-    fp = fopen(filename, "w");
+    fp = fopen(filename, "wb");
     bzero(buffer,BUFFER_SIZE);
     n = read(newsockfd,buffer,BUFFER_SIZE) ;
-    while ( n>0){
-        n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+    while (n == BUFFER_SIZE ){
+        int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+        bzero(buffer,BUFFER_SIZE);
         n = read(newsockfd,buffer,BUFFER_SIZE) ;
-        printf(" == > %d\n",n );
+        // printf("===> %d  %d\n",x,n );
         }
+    int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+    bzero(buffer,BUFFER_SIZE);
+    // printf("=cc==> %d  %d\n",1,n );
     fclose(fp);
     printf("%s Successfully received\n",filename );
     snprintf(response_message, sizeof(response_message), "Received Successfully");

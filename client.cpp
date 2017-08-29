@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
-
+bool debug =true;
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -31,7 +31,7 @@
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 #define HOST "10.129.23.200"
-#define PORT 9555
+#define PORT 9556
 #define BUFFER_SIZE 256
 
 int sockfd, portno, n;
@@ -66,14 +66,16 @@ void establishConenction(){
 
 
 void onMessage(char *buffer){
-    printf("-----> %s\n",buffer );
+    if (debug)
+        printf("-----> %s\n",buffer );
     snprintf(received_message,sizeof(received_message),"%s",buffer);
 }
 
 
 //isolating socket modules from the other modules
 int sendMessage(){
-        printf("<-----  %s\n",send_message );
+        if (debug)
+            printf("<-----  %s\n",send_message );
         n = write(sockfd,send_message,strlen(send_message));
         if (n < 0)
         error("ERROR writing to socket");
@@ -111,22 +113,26 @@ int upload(){
     sendMessage();
     FILE *f;
     unsigned long fsize;
-    f = fopen(filename, "r");
+    bzero(buffer,BUFFER_SIZE);
+    f = fopen(filename, "rb");
     if (f == NULL){
         printf("%s File not found!\n",filename);
         return 1;
     }
     else{
         printf("Uploading the file......\n");
-        while (!feof(f)){
-            n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
-            printf("<===== %d\n", n);
+        bzero(buffer,BUFFER_SIZE);
+        n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+        // printf("<==1=== %d\n", n);
+        while (n>0){
             int bytes_written = write(sockfd, buffer, n);
-            }
+            bzero(buffer,BUFFER_SIZE);
+            n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+            // printf("<===== %d\n", n);
+        }
         printf("%s File Successfully uploaded\n", filename);
     }
     // bzero(buffer,BUFFER_SIZE);
-    // int bytes_written = write(sockfd, buffer,BUFFER_SIZE );
     fclose(f);
     return 0;
 }
