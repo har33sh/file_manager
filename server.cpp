@@ -6,8 +6,10 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include<dirent.h>
 
-#define PORT 9556
+
+#define PORT 9555
 #define BUFFER_SIZE 256
 
 //Global paramaters
@@ -16,6 +18,8 @@ socklen_t clilen;
 char buffer[256];
 char response_message[100];
 struct sockaddr_in serv_addr, cli_addr;
+char file_dir[]="/home/ghost/Downloads";
+char file_list[]="/home/ghost/file_list.txt";
 
 using namespace std;
 
@@ -60,11 +64,29 @@ bool login(char *username,char *password){
     return true;
 }
 
+void force_send_response(){ //Clients waits for message, can be used to send dummy messges
+    snprintf(response_message, sizeof(response_message), "Let the force be with you");
+    int _=write(newsockfd,response_message,sizeof(response_message));
+    printf("Force Message : %s\n",response_message );
+}
 
-void load_file_list(){
-    //loads file load_file_list
-    snprintf(response_message, sizeof(response_message), "FILE 1 FILE 2....");
-    return;
+void send_file_list(){
+    //need to update the file lets call it update_file_avail()
+    printf("Sending the file list ......\n");
+    FILE *f;
+    unsigned long fsize;
+    bzero(buffer,BUFFER_SIZE);
+    f = fopen(file_list, "rb");
+    bzero(buffer,BUFFER_SIZE);
+    while (!(feof(f))){
+        int n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+        int bytes_written = write(newsockfd, buffer, n);
+        bzero(buffer,BUFFER_SIZE);
+    }
+    printf(" File list Successfully send\n");
+    bzero(buffer,BUFFER_SIZE);
+    fclose(f);
+
 }
 ////////////////////////////////////////////////////////
 
@@ -95,14 +117,40 @@ void fileRecieve(char *filename){
 void closeConnection(){
     close(newsockfd);
     close(sockfd);
+    printf("Closed all connections.." );
 }
 
-void force_send_response(){ //Clients waits for message, can be used to send dummy messges
-    snprintf(response_message, sizeof(response_message), "Let the force be with you");
-    int _=write(newsockfd,response_message,sizeof(response_message));
-    printf("Force Message : %s\n",response_message );
-}
 
+
+void fileSend(){
+    send_file_list();
+    printf("Client Downloading file\n" );
+    int x =read(newsockfd,buffer,255);
+    int choice=  atoi(strtok(buffer, ","));
+    printf("input %d\n",choice );
+
+
+
+    FILE *f;
+    char filename[]="/home/ghost/SCC305.png";
+    f = fopen(filename, "rb");
+    unsigned long fsize;
+    bzero(buffer,BUFFER_SIZE);
+    printf("Sending the file......\n");
+    bzero(buffer,BUFFER_SIZE);
+    int n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+    while (n>0){
+        int bytes_written = write(newsockfd, buffer, n);
+        bzero(buffer,BUFFER_SIZE);
+        n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
+    }
+    printf("%s File Send Successfully uploaded\n", filename);
+
+    bzero(buffer,BUFFER_SIZE);
+    fclose(f);
+
+
+}
 
 //process message and sent response
 void onMessage(char *buffers){
@@ -128,8 +176,7 @@ void onMessage(char *buffers){
                     snprintf(response_message, sizeof(response_message), "false");
                  break;
         case 4: force_send_response();fileRecieve(msg1); break;
-        case 5: load_file_list(); break;
-        case 6:  printf("File Request %s \n",msg1 );break;
+        case 5: fileSend();break;
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
 
     }
@@ -155,9 +202,8 @@ void onRecieve(){
 
 int main(int argc, char *argv[]){
      establishConenction();
-    //  char filename[]="a.txt";
-    //  fileRecieve(filename);
-     onRecieve();
+     fileSend();
+    //  onRecieve();
      closeConnection();
      return 0;
 }

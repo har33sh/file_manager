@@ -31,13 +31,13 @@ bool debug =true;
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 #define HOST "10.129.23.200"
-#define PORT 9556
+#define PORT 9555
 #define BUFFER_SIZE 256
 
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
 struct hostent *server;
-char buffer[256],send_message[100],received_message[100];
+char buffer[256],send_message[100],received_message[100],file_names[100];
 
 void error(const char *msg){
     perror(msg);
@@ -123,40 +123,68 @@ int upload(){
         printf("Uploading the file......\n");
         bzero(buffer,BUFFER_SIZE);
         n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
-        // printf("<==1=== %d\n", n);
         while (n>0){
             int bytes_written = write(sockfd, buffer, n);
             bzero(buffer,BUFFER_SIZE);
             n=fread(buffer,sizeof(char), BUFFER_SIZE, f);
-            // printf("<===== %d\n", n);
         }
         printf("%s File Successfully uploaded\n", filename);
     }
-    // bzero(buffer,BUFFER_SIZE);
+    bzero(buffer,BUFFER_SIZE);
     fclose(f);
     return 0;
 }
 
 
-//needs to be checked if it works
-void download(){
-    printf("##### File List ####");
-    char msg[]="send files";
-    snprintf(send_message, sizeof(send_message), "%s,%s", "5",msg);
-    printf("%s\n",buffer);
-    //need to find way to get which file to download and download the file
-    char filename[]="myfile";
-    snprintf(send_message, sizeof(send_message), "%s,%s", "5",filename);
-    sendMessage();
+
+void load_file_list(){
+    // snprintf(send_message, sizeof(send_message), "%s,%s", "5","Send me the file_list");
+    // sendMessage();
+    if(debug)
+        printf("Receiving file_list... \n");
     FILE *fp;
     int n;
-    fp = fopen(filename, "w");
-    printf("Downloading... %s",filename);
+    fp = fopen(".file_list.txt", "wb");
+    bzero(buffer,BUFFER_SIZE);
+    n = read(sockfd,buffer,BUFFER_SIZE) ;
+    while (n == BUFFER_SIZE ){
+        int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+        bzero(buffer,BUFFER_SIZE);
+        n = read(sockfd,buffer,BUFFER_SIZE) ;
+        // printf("===> %d  %d\n",x,n );
+        }
+    int x =fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+    bzero(buffer,BUFFER_SIZE);
+    // printf("=cc==> %d  %d\n",1,n );
+    fclose(fp);
+    if(debug)
+        printf("Successfully received file list\n");
+    printf("\n##### File List ####\n");
+    //SHOW FILE LIST HERE
+}
+
+//needs to be checked if it works
+void download(){
+    load_file_list();
+
+    int choice;
+    char save_file_as[100];
+    printf("Enter the file number to download :" );
+    scanf(" %d",&choice );
+    snprintf(send_message, sizeof(send_message), "%d",choice);
+    printf("Save file as :" );
+    scanf("%s",save_file_as);
+    int bytes_written = write(sockfd,send_message,strlen(send_message));
+    FILE *fp;
+    int n;
+    fp = fopen(save_file_as, "w");
+    printf("Downloading... %s",save_file_as);
     bzero(buffer,BUFFER_SIZE);
     while (n = read(sockfd,buffer,BUFFER_SIZE) > 0 ){
         n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
         }
     fclose(fp);
+    printf("Downloaded %s\n",save_file_as );
 }
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -255,8 +283,8 @@ void menu(){
 
 int main(int argc, char *argv[]){
     establishConenction();
-    // upload();
-    menu();
+    download();
+    // menu();
     closeConnection();
     return 0;
 }
