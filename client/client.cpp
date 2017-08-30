@@ -23,7 +23,7 @@
 #include <fcntl.h>
 #include <stdarg.h>
 
-bool debug =false;
+bool debug =true;
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -191,6 +191,8 @@ void download(){
         bzero(buffer,BUFFER_SIZE);
         n = read(sockfd,buffer,BUFFER_SIZE) ;
         }
+    n = fwrite(buffer, sizeof(char), sizeof(buffer), fp);
+    bzero(buffer,BUFFER_SIZE);
     fclose(fp);
     printf("Downloaded %s\n",save_file_as );
 }

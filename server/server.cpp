@@ -21,8 +21,8 @@ socklen_t clilen;
 char buffer[256];
 char response_message[100];
 struct sockaddr_in serv_addr, cli_addr;
-char file_dir[]="/home/ghost/Downloads";
-char file_list[]="/home/ghost/file_list.txt";
+char file_dir[]="/home/ghost/cs744/data";
+char file_list[]="/home/ghost/cs744/file_list.txt";
 char file_names[100][100];
 
 using namespace std;
@@ -68,7 +68,7 @@ void update_file_list(){
     struct dirent *dir;
     d = opendir(file_dir);
     FILE *f;
-    f=fopen(file_list,"w");
+    f=fopen(file_list,"wb");
     int i=1;
     while ((dir = readdir(d)) != NULL){
       snprintf(file_names[i],sizeof(file_names[i]),"%s",dir->d_name);
@@ -81,7 +81,7 @@ void update_file_list(){
 }
 
 void send_file_list(){
-
+    update_file_list();
     printf("Sending the file list ......\n");
     FILE *f;
     unsigned long fsize;

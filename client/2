@@ -1,0 +1,85 @@
+1 : Uddhav-20170706T094553Z-001.zip
+2 : server.cpp
+3 : firefox.png
+4 : a.txt
+5 : AppliancePortal-94a4bae2d01e2699fe779ba7aee48d36cf7f1c29-94a4bae2d01e2699fe779ba7aee48d36cf7f1c29.z
+6 : netbeans-8.2-cpp-linux-x86.sh
+7 : Keep Cool when Not Occupied.pdf
+8 : paho-mqtt-1.1.tar.gz
+9 : classes and types]
+10 : AppliancePortal-94a4bae2d01e2699fe779ba7aee48d36cf7f1c29-94a4bae2d01e2699fe779ba7aee48d36cf7f1c29
+11 : pymongo-3.5.0-cp26-cp26m-manylinux1_i686.whl
+12 : revisiting-selection-residential.pdf
+13 : .
+14 : 11th.png
+15 : path.sh
+16 : code-stable-code_1.15.1-1502903936_amd64.tar.gz
+17 : bit-vector-frameworks-handout.pdf
+18 : dfa-motivation (copy).pdf
+19 : 1630059006_CN_SocketProg.tar.gz
+20 : ..
+21 : 16305R003.tar.gz
+22 : 163059006_CN_SocketProg
+23 : f.png
+24 : mysql-server_5.7.19-1ubuntu16.04_amd64.deb-bundle.tar
+25 : www.TamilRockers.at - Meesaya Murukku (2017) Tamil 720p HDRip x264 5.1 1.4GB ESubs.mkv
+26 : cc
+27 : sqlite-autoconf-3200000.tar.gz
+28 : functional prog-20170810T161639Z-001.zip
+29 : w3m-0.5.3.tar.gz
+30 : letsee.txt
+31 : ScienceDirect_articles_09Aug2017_07-51-25.966.zip
+32 : sqlite-autoconf-3200000
+33 : IMG_20170819_000653.jpg
+34 : 16305R003
+35 : priyanka.png
+36 : LH_temperature-heatmap.ipynb
+37 : mysql-connector-c++-1.1.9-linux-ubuntu16.04-x86-64bit
+38 : cool-occupied.pdf
+39 : dfa-motivation.pdf
+40 : 20375970_1682583125147736_3212671098795016542_n.jpg
+41 : arduino-1.8.3
+42 : drive-download-20170804T151827Z-001.zip
+43 : reduce-energy-consumption.pdf
+44 :  Night The Road Lights HD wallpapers - Pictures Night The Road Lights.jpg
+45 : good.txt
+46 : netbeans-8.2-cpp-linux-x64.sh
+47 : arduino-1.8.3-linux64.tar.xz
+48 : boost_1_64_0
+49 : bit-vector-frameworks.pdf
+50 : client.cpp
+51 : activemq-parent-5.15.0-source-release.zip
+52 : travel-blogger.1.7.1.zip
+53 : 16305R013
+54 : mysql++-3.2.3.tar.gz
+55 : pymongo-2.1.1.tar.gz
+56 : pymongo-3.5.0-cp26-cp26m-manylinux1_x86_64.whl
+57 : fffffffffffffffffff.txt
+58 : boost_1_64_0.tar.gz
+59 : test1.txt
+60 : file_list.txt
+61 : mysql++-3.2.3
+62 : 16305R013.tar.gz
+63 : classroom-viz-task.zip
+64 : revised.zip
+65 : mysql-connector-c++-1.1.9-linux-ubuntu16.04-x86-64bit.tar.gz
+66 : a.jpg
+67 : 16-10-15.jpeg
+68 : practice-questions.pdf
+69 : mysql-connector-c++-1.1.9-linux-ubuntu14.04-x86-64bit.tar.gz
+// #include<iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+
+#define PORT 9512
+
+//Global paramaters
+int sockfd, newsockfd, portno;
+socklen_t clilen;
+char buffer[256];
+struct sockaddr
