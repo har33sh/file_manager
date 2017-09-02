@@ -11,12 +11,12 @@
 using namespace std;
 
 //config
-#define PORT 9559
+// #define PORT 8565
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
-// int PORT;
+int PORT;
 //Global paramaters
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
@@ -58,7 +58,7 @@ void establishConenction(){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
-        printf("Client conneced \n" );
+        printf("Proxy Server connected :: Main Process forked \n" );
         pid = fork();
         if (newsockfd < 0)
             error("ERROR on accept");
@@ -67,7 +67,7 @@ void establishConenction(){
             continue;
         }
         else{
-            printf("Spawning new process for proxy server\n" );
+            printf("Moving the Process control for proxy server :: Child\n" );
             break;
         }
     }
@@ -78,7 +78,7 @@ void establishConenction(){
 void closeConnection(){
     close(newsockfd);
     close(sockfd);
-    printf("Closed all connections.." );
+    printf("Closed all connections..\n" );
 }
 
 
@@ -117,10 +117,10 @@ void fileRecieve(){
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
     printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
-
-    // char file_location[100];
-    // snprintf(file_location,sizeof(file_location),"%s/%s/%s",file_dir,auth_user,filename);
-    fp = fopen(filename, "wb");
+    char file_location[100];
+    snprintf(file_location,sizeof(file_location),"%s/%s",file_dir,filename); //can add auth_user here
+    printf("file name is %s\n",file_location );
+    fp = fopen(file_location, "wb");
     snprintf(send_message, sizeof(send_message), "%s","Ready to recive");
     sendMessage();
     bzero(file_buffer,BUFFER_SIZE);
@@ -129,9 +129,8 @@ void fileRecieve(){
         bytes_read = read(newsockfd,file_buffer,min(BUFFER_SIZE,bytes_left)) ;
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
-        // printf("%s\n",file_buffer );
         printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
-        snprintf(send_message, sizeof(send_message), "%s : %d","ACK", bytes_read);
+        snprintf(send_message, sizeof(send_message), "%s : %d","ACK", (filesize-bytes_left));
         sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);
@@ -217,6 +216,8 @@ void fileSend(){
         }
         printf("%s File Sent Successfully \n", filename);
     }
+    snprintf(send_message, sizeof(send_message), "%s", "Server :: File recived Successfully");
+    sendMessage();//just to maintain state, giving control back
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
     printf("======== End of File Sending =========\n");
@@ -238,9 +239,10 @@ void onMessage(char *buffers){
         case 0: closeConnection();exit(0);
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
                   printf("%d %s %s\n",choice,msg1,msg2 );
+                  closeConnection();
 
     }
-    printf("---Kings Landing---" );
+    printf("---King's Landing---\n" );
 
 }
 
@@ -252,8 +254,6 @@ void start_server(){
             n = read(newsockfd,buffer,255);
             if (n < 0) error("ERROR reading from socket");
             onMessage(buffer);
-            // n = write(newsockfd,response_message,strlen(response_message));
-            // printf("Message Send: %s\n",response_message );
             if (n < 0) error("ERROR writing to socket");
         }
 }
@@ -261,8 +261,7 @@ void start_server(){
 
 
 int main(int argc, char *argv[]){
-
-    scanf("%d",&PORT );
+     scanf("%d", &PORT);
      establishConenction();
      start_server();
      closeConnection();

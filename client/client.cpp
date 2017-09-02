@@ -25,18 +25,18 @@
 
 
 //Config
-bool debug =true;
+bool debug =false;
 #define HOST "10.129.23.200"
-#define PORT 4559
+// #define PORT 8565
 #define BUFFER_SIZE 256
 
-// int PORT ;
+int PORT ;
 //Global Variables (Shared with all layers)
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
 struct hostent *server;
 char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[BUFFER_SIZE];
-
+char username[20];
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -106,15 +106,14 @@ void closeConnection(){
 
 //upload file
 int upload(){
-    snprintf(send_message, sizeof(send_message),"%d", 4);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 4,username);
     sendMessage();
     receiveMessage(); //ACK
-    // char filename[20],save_as[100];
-    // printf("Enter the path of the file : " );
-    // scanf("%s",filename );
-    // printf("Save file as: ");
-    // scanf("%s",save_as );
-    char *filename = "/a.txt";
+    char filename[20],save_as[100];
+    printf("Enter the path of the file : " );
+    scanf("%s",filename );
+    printf("Save file as: ");
+    scanf("%s",save_as );
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
@@ -126,7 +125,7 @@ int upload(){
         fseek(f, 0, SEEK_END);
         fsize = ftell(f);
         rewind(f);
-        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,"save_as");
+        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,save_as);
         sendMessage();
         bytes_left=fsize;
         printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
@@ -188,7 +187,7 @@ void load_file_list(){
 
 //needs to be checked if it works
 void download(){
-    snprintf(send_message, sizeof(send_message),"%d", 5);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 5,username);
     sendMessage();
     load_file_list();
     int choice;
@@ -234,7 +233,7 @@ void download(){
 
 void reg(){
     bool availablity=false;
-    char username[20],password[20];
+    char password[20];
     printf("Enter username : ");
     scanf("%s",username );
     snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
@@ -242,7 +241,6 @@ void reg(){
     receiveMessage();
     if(response_message[0]=='t')
       availablity=true;
-    printf("==>%s %d\n",response_message,availablity );
     while(!availablity){
         printf("%s already taken, try a differnt one...\n Enter username :",username );
         scanf("%s",username );
@@ -262,7 +260,7 @@ void reg(){
 bool login(){
     bool auth=false;
     char yes_or_no[2];
-    char username[20],password[20];
+    char password[20];
     printf("Enter username : ");
     scanf("%s",username );
     printf("Enter password : ");
@@ -293,7 +291,13 @@ bool login(){
     return auth;
 }
 
-//later modify with private file storage //changet the return type of the login to username if the auth is Success
+void logout(){
+  snprintf(send_message, sizeof(send_message), "%s", "0,Client logging out");
+  sendMessage();
+}
+
+
+//later modify with private file storage --> If needed
 void file_menu(){
     int choice;
     while (true) {
@@ -302,7 +306,7 @@ void file_menu(){
         switch (choice) {
             case 1: upload(); break;
             case 2: download(); break;
-            case 3: return;
+            case 3: logout();return;
             default: printf("Invalid Option selected..!! \n");
         }
     }
@@ -318,7 +322,7 @@ void menu(){
         scanf("%d",&choice);
         switch (choice) {
             case 1: reg(); break;
-            case 2:  file_menu(); break;
+            case 2: if(login()) file_menu(); break;
             case 3: closeConnection();exit(0);
             default: printf("Invalid Option selected..!! \n");
         }
@@ -331,9 +335,10 @@ void menu(){
 
 int main(int argc, char *argv[]){
     scanf("%d",&PORT );
+    PORT=PORT+1;
     establishConenction();
-
-    file_menu();
+    menu();
+    // file_menu();
     closeConnection();
     return 0;
 }

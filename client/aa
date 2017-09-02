@@ -1,0 +1,8 @@
+8119,aa/*
+ Sketch which publishes data from a dht22 sensor to a MQTT topic.
+
+ This sketch goes in deep sleep mode once the temperature has been sent to the MQTT
+ topic and wakes up periodically (configure SLEEP_DELAY_IN_SECONDS accordingly).
+
+ Hookup guide:
+ - co
