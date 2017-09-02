@@ -11,20 +11,17 @@
 using namespace std;
 
 //config
-// #define PORT 8565
+#define PORT 8333
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
-int PORT;
 //Global paramaters
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[100][100];
 char buffer[256],auth_user[100];
-using namespace std;
-
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -216,8 +213,8 @@ void fileSend(){
         }
         printf("%s File Sent Successfully \n", filename);
     }
-    snprintf(send_message, sizeof(send_message), "%s", "Server :: File recived Successfully");
-    sendMessage();//just to maintain state, giving control back
+    // snprintf(send_message, sizeof(send_message), "%s", "Server :: File recived Successfully");
+    // sendMessage();//just to maintain state, giving control back <-Causes problem
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
     printf("======== End of File Sending =========\n");
@@ -261,7 +258,6 @@ void start_server(){
 
 
 int main(int argc, char *argv[]){
-     scanf("%d", &PORT);
      establishConenction();
      start_server();
      closeConnection();

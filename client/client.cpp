@@ -25,12 +25,11 @@
 
 
 //Config
-bool debug =false;
+bool debug =true;
 #define HOST "10.129.23.200"
-// #define PORT 8565
+#define PORT 8333
 #define BUFFER_SIZE 256
 
-int PORT ;
 //Global Variables (Shared with all layers)
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
@@ -294,6 +293,7 @@ bool login(){
 void logout(){
   snprintf(send_message, sizeof(send_message), "%s", "0,Client logging out");
   sendMessage();
+  closeConnection();exit(0);
 }
 
 
@@ -334,8 +334,6 @@ void menu(){
 //////////////////////////////// MAIN
 
 int main(int argc, char *argv[]){
-    scanf("%d",&PORT );
-    PORT=PORT+1;
     establishConenction();
     menu();
     // file_menu();

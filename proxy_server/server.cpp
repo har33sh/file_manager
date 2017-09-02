@@ -29,13 +29,12 @@ using namespace std;
 
 //config
 #define FILE_SERVER "10.129.23.200"
-// #define FILE_SERVER_PORT 9580
-// #define PORT 4580
+#define FILE_SERVER_PORT 9333
+#define PORT 4333
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
-int PORT,FILE_SERVER_PORT;
 
 //Global paramaters
 int client_reconnnect=10,server_reconnect=10;
@@ -264,9 +263,6 @@ void home_page(){
 //////////////////////////////////// Reserved for Main fun /////////////////////////////////////////////////
 
 int main(int argc, char *argv[]){
-     scanf("%d",&FILE_SERVER_PORT );
-    //  scanf("%d",&PORT);
-     PORT = FILE_SERVER_PORT +1 ;
      establishConenction();
      home_page();
      printf("!!!!!!!!!!!!!!! The place of smokes !!!!!!!!!!!!!!!" );
