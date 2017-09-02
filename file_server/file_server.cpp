@@ -11,13 +11,14 @@
 using namespace std;
 
 //config
-#define PORT 8333
+// #define PORT 9334
+int PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
 //Global paramaters
-int sockfd, newsockfd, portno;
+int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[100][100];
@@ -89,9 +90,7 @@ void sendMessage(){
 
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
-    int bytes_read = 0;
-    while(bytes_read==0)
-        bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+    int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
     printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read < 0)
         error("ERROR reading from socket");
@@ -127,7 +126,7 @@ void fileRecieve(){
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
         printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
-        snprintf(send_message, sizeof(send_message), "%s : %d","ACK", (filesize-bytes_left));
+        snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
         sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);
@@ -151,6 +150,7 @@ void update_file_list(){
       fprintf(f, "%d : %s\n",i,file_names[i] );
       i++;
     }
+    max_files=i;
     closedir(d);
     fclose(f);
 
@@ -178,7 +178,14 @@ void send_file_list(){
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
 }
-
+bool verify_ack(int left){
+  char *_=  strtok(response_message, ",");
+  int  ack_sent= atoi(strtok(NULL, ","));
+  printf("%d %d\n",left,ack_sent );
+  if(ack_sent==left)
+    return true;
+  return false;
+}
 
 void fileSend(){
     printf("======== File Sending =========\n");
@@ -187,6 +194,10 @@ void fileSend(){
     int choice=  atoi(strtok(response_message, ","));
     printf("input %d\n",choice );
     char filename[100];
+    if(choice>max_files){
+      printf("Illegal Request" );
+      return;
+    }
     snprintf(filename,sizeof(filename),"%s/%s",file_dir,file_names[choice]); //file abs address
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
@@ -208,13 +219,15 @@ void fileSend(){
             bytes_read = fread(file_buffer,sizeof(char), min(BUFFER_SIZE,bytes_left), f);
             bytes_written = write(newsockfd, file_buffer, bytes_read);
             receiveMessage();
+            if(!verify_ack(bytes_left)){
+                  printf("Bad Ack Received\n" );
+                  break;
+                }
             bytes_left-=bytes_written;
             printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
         }
         printf("%s File Sent Successfully \n", filename);
     }
-    // snprintf(send_message, sizeof(send_message), "%s", "Server :: File recived Successfully");
-    // sendMessage();//just to maintain state, giving control back <-Causes problem
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
     printf("======== End of File Sending =========\n");
@@ -258,6 +271,8 @@ void start_server(){
 
 
 int main(int argc, char *argv[]){
+  scanf("%d",&PORT );
+  PORT=PORT+1;
      establishConenction();
      start_server();
      closeConnection();

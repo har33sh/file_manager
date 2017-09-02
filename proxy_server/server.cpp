@@ -29,15 +29,16 @@ using namespace std;
 
 //config
 #define FILE_SERVER "10.129.23.200"
-#define FILE_SERVER_PORT 9333
-#define PORT 4333
+// #define FILE_SERVER_PORT 9334
+// #define PORT 4334
+int FILE_SERVER_PORT,PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
 
 //Global paramaters
-int client_reconnnect=10,server_reconnect=10;
+int client_reconnnect=100,server_reconnect=100;
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
@@ -91,7 +92,7 @@ void connectToFileServer(){
 
 void forwardMessage(){
     forwaded_bytes = write(sockfd_file,msg_to_fs,strlen(msg_to_fs));
-    printf("\t----->%d %s\n",forwaded_bytes,"msg_to_fs");
+    printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", strlen(msg_to_fs));
     if (forwaded_bytes < 0)
         error("ERROR writing to socket");
 }
@@ -103,7 +104,7 @@ void recvFileServerMessage(){
         error("ERROR reading from socket");
     bzero(msg_to_client,BUFFER_SIZE);
     snprintf(msg_to_client,fs_recv_bytes+1,"%s",msg_from_fs);
-    printf("\t<-----%d %s\n",fs_recv_bytes,"msg_from_fs");
+    printf("\t<-----%d %s %d  <-\n",fs_recv_bytes,"msg_from_fs",strlen(msg_from_fs));
     if (fs_recv_bytes==0){ // handeling closed connections
       server_reconnect-=1;
       if(server_reconnect==0){
@@ -123,20 +124,14 @@ void closeFileServerConnection(){
 
 //forwards download request to file server
 void start_proxy_server(){
-    pid_t pid;
-    pid = fork();
-    if (pid==0){ //child process
+
         while (true){
             receiveMessage();
             forwardMessage();
-        }
-    }
-    else{ //parent process
-        while(true){
+
             recvFileServerMessage();
             sendMessage();
-        }
-    }
+          }
 
 }
 
@@ -192,7 +187,7 @@ void closeConnection(){ //closes connection with client and proxy server
 
 void sendMessage(){
         int bytes_written = write(newsockfd,msg_to_client,strlen(msg_to_client));
-        printf("<-----%d %s\n",bytes_written,"msg_to_client" );
+        printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,strlen(msg_to_client));
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
@@ -263,8 +258,10 @@ void home_page(){
 //////////////////////////////////// Reserved for Main fun /////////////////////////////////////////////////
 
 int main(int argc, char *argv[]){
+    scanf("%d",&PORT );
+    FILE_SERVER_PORT=PORT+1;
      establishConenction();
-     home_page();
+    //  home_page();
      printf("!!!!!!!!!!!!!!! The place of smokes !!!!!!!!!!!!!!!" );
      start_proxy_server();
      closeConnection();

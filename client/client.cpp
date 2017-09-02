@@ -27,7 +27,8 @@
 //Config
 bool debug =true;
 #define HOST "10.129.23.200"
-#define PORT 8333
+// #define PORT 4334
+int PORT;
 #define BUFFER_SIZE 256
 
 //Global Variables (Shared with all layers)
@@ -77,9 +78,7 @@ void sendMessage(){
 
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
-    int bytes_read = 0;
-    while(bytes_read==0)
-        bytes_read=read(sockfd,response_message,BUFFER_SIZE);
+    int bytes_read=read(sockfd,response_message,BUFFER_SIZE);
     if (debug)
         printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read < 0)
@@ -103,12 +102,21 @@ void closeConnection(){
 //////////////////////////////// Data Access Layer///////////////////////////////////////////////
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
+bool verify_ack(int left){
+  char *_=  strtok(response_message, ",");
+  int  ack_sent= atoi(strtok(NULL, ","));
+  printf("%d %d\n",left,ack_sent );
+  if(ack_sent==left)
+    return true;
+  return false;
+}
+
 //upload file
 int upload(){
     snprintf(send_message, sizeof(send_message),"%d,%s", 4,username);
     sendMessage();
     receiveMessage(); //ACK
-    char filename[20],save_as[100];
+    char filename[BUFFER_SIZE],save_as[BUFFER_SIZE];
     printf("Enter the path of the file : " );
     scanf("%s",filename );
     printf("Save file as: ");
@@ -137,6 +145,10 @@ int upload(){
             if (debug)
                 printf("<----Uploaded %d of %d\n",(fsize-bytes_left),fsize );
             receiveMessage();
+            if(!verify_ack(bytes_left)){
+                  printf("Bad Ack Received\n" );
+                  break;
+            }
         }
         printf("%s File Successfully uploaded\n", filename);
     }
@@ -210,12 +222,12 @@ void download(){
     sendMessage(); //starting Download
     while (bytes_left>0){
         bytes_read = read(sockfd,file_buffer,min(BUFFER_SIZE,bytes_left)) ;
-        snprintf(send_message, sizeof(send_message),"Ack  %d of %d",(filesize-bytes_left),filesize );
-        sendMessage(); //starting Download
         if(bytes_read==-1){
-            printf("%s\n", "Socket cant read");
+          printf("%s\n", "Socket cant read");
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
+        snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
+        sendMessage(); //Ack Message
         bytes_left-=bytes_written;
         if (debug)
             printf("%d Receiving %d of %d\n",bytes_written,(filesize-bytes_left),filesize );
@@ -334,9 +346,11 @@ void menu(){
 //////////////////////////////// MAIN
 
 int main(int argc, char *argv[]){
+  scanf("%d",&PORT );
+
     establishConenction();
-    menu();
-    // file_menu();
+    // menu();
+    file_menu();
     closeConnection();
     return 0;
 }
