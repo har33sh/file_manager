@@ -27,9 +27,10 @@
 //Config
 bool debug =true;
 #define HOST "10.129.23.200"
-#define PORT 9540
+#define PORT 4559
 #define BUFFER_SIZE 256
 
+// int PORT ;
 //Global Variables (Shared with all layers)
 int sockfd, portno, n;
 struct sockaddr_in serv_addr;
@@ -77,7 +78,9 @@ void sendMessage(){
 
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
-    int bytes_read = read(sockfd,response_message,BUFFER_SIZE);
+    int bytes_read = 0;
+    while(bytes_read==0)
+        bytes_read=read(sockfd,response_message,BUFFER_SIZE);
     if (debug)
         printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read < 0)
@@ -105,11 +108,13 @@ void closeConnection(){
 int upload(){
     snprintf(send_message, sizeof(send_message),"%d", 4);
     sendMessage();
-    char filename[20],save_as[100];
-    printf("Enter the path of the file : " );
-    scanf("%s",filename );
-    printf("Save file as: ");
-    scanf("%s",save_as );
+    receiveMessage(); //ACK
+    // char filename[20],save_as[100];
+    // printf("Enter the path of the file : " );
+    // scanf("%s",filename );
+    // printf("Save file as: ");
+    // scanf("%s",save_as );
+    char *filename = "/a.txt";
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
@@ -121,7 +126,7 @@ int upload(){
         fseek(f, 0, SEEK_END);
         fsize = ftell(f);
         rewind(f);
-        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,save_as);
+        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,"save_as");
         sendMessage();
         bytes_left=fsize;
         printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
@@ -130,8 +135,10 @@ int upload(){
             bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
             bytes_written = write(sockfd, file_buffer, bytes_read);
             bytes_left-=bytes_written;
+            // printf("%s\n",file_buffer );
             if (debug)
-            printf("Uploaded %d of %d\n",(fsize-bytes_left),fsize );
+                printf("<----Uploaded %d of %d\n",(fsize-bytes_left),fsize );
+            receiveMessage();
         }
         printf("%s File Successfully uploaded\n", filename);
     }
@@ -311,7 +318,7 @@ void menu(){
         scanf("%d",&choice);
         switch (choice) {
             case 1: reg(); break;
-            case 2: if(login()) file_menu(); break;
+            case 2:  file_menu(); break;
             case 3: closeConnection();exit(0);
             default: printf("Invalid Option selected..!! \n");
         }
@@ -323,8 +330,10 @@ void menu(){
 //////////////////////////////// MAIN
 
 int main(int argc, char *argv[]){
+    scanf("%d",&PORT );
     establishConenction();
-    menu();
+
+    file_menu();
     closeConnection();
     return 0;
 }

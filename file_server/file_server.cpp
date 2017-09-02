@@ -8,15 +8,15 @@
 #include <netinet/in.h>
 #include<dirent.h>
 #include <string>
-#include "db.h"
 using namespace std;
 
 //config
-#define PORT 9540
+#define PORT 9559
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
 
+// int PORT;
 //Global paramaters
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
@@ -39,7 +39,7 @@ void error(const char *msg){
 
 //socket, bind, listen
 void establishConenction(){
-    printf("Starting server ....\n");
+    printf("Starting File server ....\n");
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
     error("ERROR opening socket");
@@ -53,22 +53,23 @@ void establishConenction(){
     listen(sockfd,5);
     clilen = sizeof(cli_addr);
     pid_t pid;
-    label: printf("Server started... Waiting for connection...\n");
+    label: printf("File Server started... Waiting for connection...\n");
     for(;;){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
         printf("Client conneced \n" );
         pid = fork();
-        printf("Spawning new process\n" );
         if (newsockfd < 0)
             error("ERROR on accept");
         if(pid!=0){
             close(newsockfd);
             continue;
         }
-        else
+        else{
+            printf("Spawning new process for proxy server\n" );
             break;
+        }
     }
 
 }
@@ -83,15 +84,17 @@ void closeConnection(){
 
 
 void sendMessage(){
-        int bytes_written = write(newsockfd,send_message,strlen(send_message));
-        printf("<-----%d %s\n",bytes_written,send_message);
-        if (bytes_written < 0)
-            error("ERROR writing to socket");
+    int bytes_written = write(newsockfd,send_message,strlen(send_message));
+    printf("<-----%d %s\n",bytes_written,send_message);
+    if (bytes_written < 0)
+        error("ERROR writing to socket");
 }
 
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
-    int bytes_read = read(newsockfd,response_message,BUFFER_SIZE);
+    int bytes_read = 0;
+    while(bytes_read==0)
+        bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
     printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read < 0)
         error("ERROR reading from socket");
@@ -108,15 +111,16 @@ void fileRecieve(){
     printf("======== File Receiving =========\n");
     FILE *fp;
     int bytes_left,bytes_read,bytes_written;
-
+    snprintf(send_message,sizeof(send_message),"%s","Started fileReceive()");
+    sendMessage();
     receiveMessage();
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
-    printf("Receiving File: %s FileSize: %d\n",filename,filesize);
+    printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
 
-    char file_location[100];
-    snprintf(file_location,sizeof(file_location),"%s/%s/%s",file_dir,auth_user,filename);
-    fp = fopen(file_location, "wb");
+    // char file_location[100];
+    // snprintf(file_location,sizeof(file_location),"%s/%s/%s",file_dir,auth_user,filename);
+    fp = fopen(filename, "wb");
     snprintf(send_message, sizeof(send_message), "%s","Ready to recive");
     sendMessage();
     bzero(file_buffer,BUFFER_SIZE);
@@ -125,12 +129,16 @@ void fileRecieve(){
         bytes_read = read(newsockfd,file_buffer,min(BUFFER_SIZE,bytes_left)) ;
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
-        printf("Receiving %d of %d\n",(filesize-bytes_left),filesize );
+        // printf("%s\n",file_buffer );
+        printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
+        snprintf(send_message, sizeof(send_message), "%s : %d","ACK", bytes_read);
+        sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
     printf("Received File: %s Received: %d  Wrote: %d \n",filename,(filesize-bytes_left),filesize );
     snprintf(response_message, sizeof(response_message), "Received Successfully");
+    printf("========End of File Receiving =========\n");
 }
 
 
@@ -211,8 +219,7 @@ void fileSend(){
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
-
-
+    printf("======== End of File Sending =========\n");
 }
 
 //process message and sent response
@@ -226,32 +233,15 @@ void onMessage(char *buffers){
     // printf("///%s\n",auth_user );
     snprintf(response_message, sizeof(response_message), "--No message--");
     switch (choice) {
-        case 1: if(usernameAvailable(msg1))
-                    snprintf(send_message, sizeof(response_message), "true");
-                else
-                    snprintf(send_message, sizeof(response_message), "false");
-                sendMessage();
-                break;
-        case 2: if (!createUser(msg1,msg2))
-                    snprintf(send_message, sizeof(response_message), "true");
-                 else
-                    snprintf(send_message, sizeof(response_message), "false");
-                 sendMessage();
-                 break;
-        case 3: if (authenticateUser(msg1,msg2))
-                    snprintf(send_message, sizeof(response_message), "true");
-                 else
-                    snprintf(send_message, sizeof(response_message), "false");
-                 sendMessage();
-                 break;
         case 4: fileRecieve(); break;
         case 5: fileSend();break;
         case 0: closeConnection();exit(0);
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
+                  printf("%d %s %s\n",choice,msg1,msg2 );
 
     }
+    printf("---Kings Landing---" );
 
-    printf("%d %s %s\n",choice,msg1,msg2 );
 }
 
 
@@ -271,6 +261,8 @@ void start_server(){
 
 
 int main(int argc, char *argv[]){
+
+    scanf("%d",&PORT );
      establishConenction();
      start_server();
      closeConnection();
