@@ -21,7 +21,7 @@
 #include <ctime>
 #include <fcntl.h>
 #include <stdarg.h>
-
+#include <unistd.h>
 
 #include "db.h"
 
@@ -67,7 +67,7 @@ void error(const char *msg){
 //////////////////////////////File Sever Connection ////////////////////////////////////////////////
 
 char msg_from_client[BUFFER_SIZE],msg_to_fs[BUFFER_SIZE],msg_to_client[BUFFER_SIZE],msg_from_fs[BUFFER_SIZE];
-int forwaded_bytes,fs_recv_bytes;
+int forwaded_bytes,fs_recv_bytes,bytes_read;
 
 //Establish connection to server
 void connectToFileServer(){
@@ -91,15 +91,18 @@ void connectToFileServer(){
 
 
 void forwardMessage(){
-    forwaded_bytes = write(sockfd_file,msg_to_fs,strlen(msg_to_fs));
-    printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", strlen(msg_to_fs));
+    forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
+    printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
     if (forwaded_bytes < 0)
         error("ERROR writing to socket");
 }
 
 void recvFileServerMessage(){
     bzero(msg_from_fs,BUFFER_SIZE);
-    fs_recv_bytes= read(sockfd_file,msg_from_fs,BUFFER_SIZE);
+    fs_recv_bytes=0;
+    while (fs_recv_bytes==0) {
+      fs_recv_bytes=read(sockfd_file,msg_from_fs,BUFFER_SIZE);
+    }
     if (fs_recv_bytes < 0)
         error("ERROR reading from socket");
     bzero(msg_to_client,BUFFER_SIZE);
@@ -124,16 +127,23 @@ void closeFileServerConnection(){
 
 //forwards download request to file server
 void start_proxy_server(){
-
+    pid_t pid;
+    pid = fork();
+    if (pid==0){ //child process
         while (true){
             receiveMessage();
             forwardMessage();
-
+        }
+    }
+    else{ //parent process
+        while(true){
             recvFileServerMessage();
             sendMessage();
-          }
+        }
+    }
 
 }
+
 
 
 //////////////////////////////Connection to Clients////////////////////////////////////////////////
@@ -186,15 +196,17 @@ void closeConnection(){ //closes connection with client and proxy server
 
 
 void sendMessage(){
-        int bytes_written = write(newsockfd,msg_to_client,strlen(msg_to_client));
-        printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,strlen(msg_to_client));
+        int bytes_written = write(newsockfd,msg_from_fs,fs_recv_bytes);
+        printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
 
 void receiveMessage(){
     bzero(msg_from_client   ,BUFFER_SIZE);
-    int bytes_read = read(newsockfd,msg_from_client,BUFFER_SIZE);
+    bytes_read =0;
+    while(bytes_read==0)
+      bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
     printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0)
         error("ERROR reading from socket");
@@ -261,7 +273,7 @@ int main(int argc, char *argv[]){
     scanf("%d",&PORT );
     FILE_SERVER_PORT=PORT+1;
      establishConenction();
-    //  home_page();
+     home_page();
      printf("!!!!!!!!!!!!!!! The place of smokes !!!!!!!!!!!!!!!" );
      start_proxy_server();
      closeConnection();

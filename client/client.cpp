@@ -349,8 +349,8 @@ int main(int argc, char *argv[]){
   scanf("%d",&PORT );
 
     establishConenction();
-    // menu();
-    file_menu();
+    menu();
+    // file_menu();
     closeConnection();
     return 0;
 }
