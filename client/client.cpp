@@ -25,8 +25,9 @@
 
 
 //Config
-bool debug =true;
-#define HOST "10.129.23.200"
+bool debug =false;
+char HOST[50];
+// #define HOST "10.129.23.200"
 // #define PORT 4334
 int PORT;
 #define BUFFER_SIZE 256
@@ -253,7 +254,7 @@ void reg(){
     if(response_message[0]=='t')
       availablity=true;
     while(!availablity){
-        printf("%s already taken, try a differnt one...\n Enter username :",username );
+        printf("%s already taken, try a differnt one...\nEnter username :",username );
         scanf("%s",username );
         snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
         sendMessage();
@@ -346,7 +347,12 @@ void menu(){
 //////////////////////////////// MAIN
 
 int main(int argc, char *argv[]){
-  scanf("%d",&PORT );
+  if(argc<3){
+    fprintf(stderr,"usage %s hostname server port\n", argv[0] );
+    exit(0);
+  }
+    snprintf(HOST,sizeof(HOST),"%s",argv[1]);
+    PORT=atoi(argv[2]);
 
     establishConenction();
     menu();

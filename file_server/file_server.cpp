@@ -271,8 +271,11 @@ void start_server(){
 
 
 int main(int argc, char *argv[]){
-  scanf("%d",&PORT );
-  PORT=PORT+1;
+      if(argc<2){
+        fprintf(stderr,"usage %s port\n", argv[0] );
+        exit(0);
+      }
+     PORT=atoi(argv[1]);
      establishConenction();
      start_server();
      closeConnection();

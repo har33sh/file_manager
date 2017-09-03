@@ -28,10 +28,11 @@
 using namespace std;
 
 //config
-#define FILE_SERVER "10.129.23.200"
+// #define FILE_SERVER "10.129.23.200"
 // #define FILE_SERVER_PORT 9334
 // #define PORT 4334
 int FILE_SERVER_PORT,PORT;
+char FILE_SERVER[50];
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
@@ -42,7 +43,7 @@ int client_reconnnect=100,server_reconnect=100;
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
-char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
+char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
 using namespace std;
 
@@ -66,7 +67,7 @@ void error(const char *msg){
 }
 //////////////////////////////File Sever Connection ////////////////////////////////////////////////
 
-char msg_from_client[BUFFER_SIZE],msg_to_fs[BUFFER_SIZE],msg_to_client[BUFFER_SIZE],msg_from_fs[BUFFER_SIZE];
+char msg_from_client[BUFFER_SIZE],msg_from_fs[BUFFER_SIZE];
 int forwaded_bytes,fs_recv_bytes,bytes_read;
 
 //Establish connection to server
@@ -100,14 +101,11 @@ void forwardMessage(){
 void recvFileServerMessage(){
     bzero(msg_from_fs,BUFFER_SIZE);
     fs_recv_bytes=0;
-    while (fs_recv_bytes==0) {
+    while (fs_recv_bytes==0)
       fs_recv_bytes=read(sockfd_file,msg_from_fs,BUFFER_SIZE);
-    }
     if (fs_recv_bytes < 0)
         error("ERROR reading from socket");
-    bzero(msg_to_client,BUFFER_SIZE);
-    snprintf(msg_to_client,fs_recv_bytes+1,"%s",msg_from_fs);
-    printf("\t<-----%d %s %d  <-\n",fs_recv_bytes,"msg_from_fs",strlen(msg_from_fs));
+    printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
     if (fs_recv_bytes==0){ // handeling closed connections
       server_reconnect-=1;
       if(server_reconnect==0){
@@ -210,8 +208,6 @@ void receiveMessage(){
     printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0)
         error("ERROR reading from socket");
-    bzero(msg_to_fs   ,BUFFER_SIZE);
-    snprintf(msg_to_fs,bytes_read+1,"%s",msg_from_client);
     if(bytes_read==0){
       client_reconnnect-=1;
       if(client_reconnnect==0){
@@ -219,6 +215,13 @@ void receiveMessage(){
         closeConnection();
       }
     }
+}
+
+void sendResponseMessage(){
+        int bytes_written = write(newsockfd,response_message,20);
+        printf("<-----%d %s %d \n",bytes_written,response_message ,bytes_written);
+        if (bytes_written < 0)
+            error("ERROR writing to socket");
 }
 
 
@@ -230,31 +233,31 @@ void receiveMessage(){
 void home_page(){
   printf("***** User Credentials ***** \n" );
     start_homepage: receiveMessage();
-    char buffer[BUFFER_SIZE],response_message[BUFFER_SIZE];
+    char buffer[BUFFER_SIZE];
+    bzero(response_message,BUFFER_SIZE);
     snprintf(buffer,sizeof(buffer),"%s",msg_from_client);
     printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *username= strtok(NULL, ",");
     char *password=strtok(NULL, ",");
-
     switch (choice) {
         case 1: if(usernameAvailable(username))
-                    snprintf(response_message, sizeof(response_message), "true");
+                    snprintf(response_message, sizeof(response_message),"true" );
                 else
-                    snprintf(response_message, sizeof(response_message), "false");
+                    snprintf(response_message, sizeof(response_message),"false");
                 break;
         case 2: if (!createUser(username,password))
-                    snprintf(response_message, sizeof(response_message), "true");
+                    snprintf(response_message, sizeof(response_message),"true");
                  else
-                    snprintf(response_message, sizeof(response_message), "false");
+                    snprintf(response_message, sizeof(response_message),"false");
                  break;
         case 3: if (authenticateUser(username,password)){
-                    snprintf(msg_to_client, sizeof(msg_to_client), "true"); //Sharing the buffer,
-                    sendMessage();
+                    snprintf(response_message,sizeof(response_message),"true");
+                    sendResponseMessage();
                     return ;
                     }
                  else
-                    snprintf(response_message, sizeof(response_message), "false");
+                    snprintf(response_message, sizeof(response_message),"false");
                  break;
 
         case 0: closeConnection();exit(0);
@@ -262,16 +265,21 @@ void home_page(){
                  printf("%d %s %s\n",choice,username,password );
                  closeConnection();
     }
-    snprintf(msg_to_client, sizeof(msg_to_client), "%s",response_message);
-    sendMessage();
+    printf("%s\n",response_message );
+    sendResponseMessage();
     goto start_homepage;
 }
 
 //////////////////////////////////// Reserved for Main fun /////////////////////////////////////////////////
 
 int main(int argc, char *argv[]){
-    scanf("%d",&PORT );
-    FILE_SERVER_PORT=PORT+1;
+  if(argc<4){
+    fprintf(stderr,"usage %s hostname fileserver_port listen_port\n", argv[0] );
+    exit(0);
+  }
+     snprintf(FILE_SERVER, sizeof(FILE_SERVER),"%s",argv[1]);
+     FILE_SERVER_PORT=atoi(argv[2]);
+     PORT=atoi(argv[3]);
      establishConenction();
      home_page();
      printf("!!!!!!!!!!!!!!! The place of smokes !!!!!!!!!!!!!!!" );
