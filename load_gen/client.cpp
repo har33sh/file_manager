@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <iostream>
 #include <stdlib.h>
@@ -22,15 +21,30 @@
 #include <ctime>
 #include <fcntl.h>
 #include <stdarg.h>
-
+#include <time.h>
+#include <stdlib.h>
+#include <iostream>
+#include <cstdlib>
+#include <pthread.h>
+#include <time.h>
+#include <stdlib.h>
+using namespace std;
 
 //Config
-bool debug =true;
+bool debug =false;
 char HOST[50];
+// #define HOST "10.129.23.200"
+// #define PORT 4334
 int PORT;
+int global_choice;
 #define BUFFER_SIZE 256
-int  portno, n;
-
+char *f_name = "/a.txt";
+//Global Variables (Shared with all layers)
+int sockfd, portno, n;
+struct sockaddr_in serv_addr;
+struct hostent *server;
+char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[BUFFER_SIZE];
+char username[20];
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -42,8 +56,6 @@ void error(const char *msg){
 
 //Establish connection to server
 int establishConenction(){
-    struct sockaddr_in serv_addr;
-    struct hostent *server;
     int sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0)
     error("ERROR opening socket");
@@ -73,7 +85,8 @@ void sendMessage(int sockfd,char *send_message){
 
 }
 
-char* receiveMessage(int sockfd, char *response_message){
+char* receiveMessage(int sockfd){
+    char response_message[BUFFER_SIZE];
     bzero(response_message,BUFFER_SIZE);
     int bytes_read=read(sockfd,response_message,BUFFER_SIZE);
     if (debug)
@@ -84,8 +97,7 @@ char* receiveMessage(int sockfd, char *response_message){
 }
 
 
-void closeConnection(int sockfd){
-    char send_message[BUFFER_SIZE];
+void closeConnection(int sockfd,char *send_message){
     snprintf(send_message, sizeof(send_message), "%s,%s", "0","Byee..");
     int n = write(sockfd,send_message,strlen(send_message));
     close(sockfd);
@@ -101,7 +113,7 @@ void closeConnection(int sockfd){
 //////////////////////////////// Data Access Layer///////////////////////////////////////////////
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-bool verify_ack(int left,char response_message[BUFFER_SIZE]){
+bool verify_ack(int left,char* response_message){
   char *_=  strtok(response_message, ",");
   int  ack_sent= atoi(strtok(NULL, ","));
   printf("%d %d\n",left,ack_sent );
@@ -112,16 +124,13 @@ bool verify_ack(int left,char response_message[BUFFER_SIZE]){
 
 //upload file
 int upload(int sockfd){
-    char username[20];
-    char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
+    char send_message[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 4,username);
     sendMessage(sockfd,send_message);
-    receiveMessage(sockfd,response_message); //ACK
+    char *response_message= receiveMessage(); //ACK
     char filename[BUFFER_SIZE],save_as[BUFFER_SIZE];
-    printf("Enter the path of the file : " );
-    scanf("%s",filename );
-    printf("Save file as: ");
-    scanf("%s",save_as );
+    snprintf(filename, sizeof(filename), "%s", f_name);
+    snprintf(save_as, sizeof(save_as), "12344"); //EDIT THIS
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
@@ -137,7 +146,7 @@ int upload(int sockfd){
         sendMessage(sockfd,send_message);
         bytes_left=fsize;
         printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
-        receiveMessage(sockfd,response_message);
+        char* response_message= receiveMessage();
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
             bytes_written = write(sockfd, file_buffer, bytes_read);
@@ -145,8 +154,8 @@ int upload(int sockfd){
             // printf("%s\n",file_buffer );
             if (debug)
                 printf("<----Uploaded %d of %d\n",(fsize-bytes_left),fsize );
-            receiveMessage(sockfd,response_message);
-            if(!verify_ack(bytes_left,response_message)){
+            char *response_message= receiveMessage();
+            if(!verify_ack(bytes_left)){
                   printf("Bad Ack Received\n" );
                   break;
             }
@@ -165,9 +174,9 @@ int min(int x,int y) {
     return y;
 }
 
-void load_file_list(int sockfd){
+void load_file_list(){
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
-    receiveMessage(sockfd,response_message);
+    char *response_message=receiveMessage();
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
     if(debug)
@@ -198,32 +207,25 @@ void load_file_list(int sockfd){
     fclose(fp);
 }
 
-//needs to be checked if it works
-void download(int sockfd){
-    char username[20];
+void download(){
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 5,username);
-    sendMessage(sockfd,send_message);
-    load_file_list(sockfd);
-    int choice;
-    char save_file[100];
-    printf("Enter the file number to download :" );
-    scanf(" %d",&choice );
-    printf("Save file as :" );
-    scanf("%s",save_file);
-    printf("Downloading... %s\n",save_file);
+    sendMessage();
+    load_file_list();
+    int choice=1;
+    printf("Downloading... \n");
     snprintf(send_message, sizeof(send_message), "%d,",choice);
-    sendMessage(sockfd,send_message); //sending the choice
+    sendMessage(); //sending the choice
     if (debug)
         printf("waiting for file details\n" );
-    receiveMessage(sockfd,response_message); //gets the file details
+    receiveMessage(); //gets the file details
     int filesize=  atoi(strtok(response_message, ","));
     int bytes_left,bytes_read,bytes_written;
-    FILE *fp = fopen(save_file, "wb");
+    FILE *fp = fopen("xyz", "wb"); //EDIT THIS
     bytes_left=filesize;
     bzero(file_buffer,BUFFER_SIZE);
     snprintf(send_message, sizeof(send_message), "%s,","Ready for download");
-    sendMessage(sockfd,send_message); //starting Download
+    sendMessage(); //starting Download
     while (bytes_left>0){
         bytes_read = read(sockfd,file_buffer,min(BUFFER_SIZE,bytes_left)) ;
         if(bytes_read==-1){
@@ -231,122 +233,101 @@ void download(int sockfd){
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
-        sendMessage(sockfd,send_message); //Ack Message
+        sendMessage(); //Ack Message
         bytes_left-=bytes_written;
         if (debug)
             printf("%d Receiving %d of %d\n",bytes_written,(filesize-bytes_left),filesize );
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
-    // receiveMessage(sockfd,response_message); //Server sends a completion flag from the whil true loop
-    printf("Download File: %s filesize: %d\n",save_file,filesize );
+    // receiveMessage(); //Server sends a completion flag from the whil true loop
+    printf("Download File filesize: %d\n",filesize );
 }
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //////////////////////////////// Presentation Layer///////////////////////////////////////////////
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
-void reg(int sockfd){
-    char username[20];
-    char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE];
+void reg(){
+    char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     bool availablity=false;
     char password[20];
-    printf("Enter username : ");
-    scanf("%s",username );
+    int random_number = rand();
+    snprintf(username, sizeof(username), "%s%d", "random_user",random_number);
+    printf("Username : %s",username );
     snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
-    sendMessage(sockfd,send_message);
-    receiveMessage(sockfd,response_message);
+    sendMessage();
+    receiveMessage();
     if(response_message[0]=='t')
       availablity=true;
     while(!availablity){
-        printf("%s already taken, try a differnt one...\nEnter username :",username );
-        scanf("%s",username );
+        printf("%s already taken, trying a differnt one...\n",username );
+        random_number = rand();
+        snprintf(username, sizeof(username), "%s%d", "random_user",random_number);
         snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
-        sendMessage(sockfd,send_message);
-        receiveMessage(sockfd,response_message);
+        sendMessage();
+        receiveMessage();
         if(response_message[0]=='t')
           availablity=true;
     }
-    printf("Enter password :");
-    scanf("%s",password );
+    snprintf(password, sizeof(password), "%s%d", "random_password",random_number);
+    printf("Enter password : %s",password );
     printf("%s registered Successfully\n",username );
     snprintf(send_message, sizeof(send_message), "%s,%s,%s", "2",username,password);
-    sendMessage(sockfd,send_message);
+    sendMessage();
 }
 
-bool login(int sockfd){
-    char username[20];
-    char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE];
+bool login(){
+    char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     bool auth=false;
     char yes_or_no[2];
     char password[20];
-    printf("Enter username : ");
-    scanf("%s",username );
-    printf("Enter password : ");
-    scanf("%s",password );
-    snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
-    sendMessage(sockfd,send_message);
-    printf("ffff\n" );
-    receiveMessage(sockfd,response_message);
-    printf("see %s",response_message );
+    snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3","abc","abc");
+    sendMessage();
+    receiveMessage();
     if(response_message[0]=='t')
       auth=true;
     while(!auth){
         printf("Bad username or password \nTry again ? [Y/n] : ");
-        scanf("%s",yes_or_no);
-        if (yes_or_no[0]=='y' or yes_or_no[0]=='Y'){
-            printf("Enter username : ");
-            scanf("%s",username );
-            printf("Enter password : ");
-            scanf("%s",password );
-            snprintf(send_message, sizeof(send_message), "%s,%s,%s", "3",username,password);
-            sendMessage(sockfd,send_message);
-            receiveMessage(sockfd,response_message);
-            if(response_message[0]=='t')
-              auth=true;
-        }
-        else
-            return auth;
+        exit(0);
     }
-    printf("### user %s Successfully Authenticated  ###\n",username );
+    printf("### user Successfully Authenticated  ###\n" );
     return auth;
 }
 
-void logout(int sockfd){
-  char send_message[BUFFER_SIZE];
+void logout(){
+  char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
   snprintf(send_message, sizeof(send_message), "%s", "0,Client logging out");
-  sendMessage(sockfd,send_message);
-  closeConnection(sockfd);exit(0);
+  sendMessage();
+  closeConnection();exit(0);
 }
 
 
 //later modify with private file storage --> If needed
-void file_menu(int sockfd){
+void file_menu(){
     int choice;
     while (true) {
-        printf("1. Upload\n2. Download\n3. Logout\nEnter your choice : ");
-        scanf("%d",&choice);
+        printf("1. Upload\n2. Download\n3. Mixed\n ");
+        // scanf("%d",&choice);
+        choice=global_choice;
         switch (choice) {
-            case 1: upload(sockfd); break;
-            case 2: download(sockfd); break;
-            case 3: logout(sockfd);return;
+            case 1: upload(); break;
+            case 2: download(); break;
+            case 3: upload();download();return;
             default: printf("Invalid Option selected..!! \n");
         }
     }
 }
 
-void menu(int sockfd){
+void menu(){
     int choice;
-    printf("//////////////////////////////////////////////////////////////////////////////\n");
-    printf("///////////////////////////        FILE SERVER         ///////////////////////\n");
-    printf("//////////////////////////////////////////////////////////////////////////////\n");
     while (true) {
         printf("1. Register \n2. Login\n3. Exit\nEnter your Choice : ");
-        scanf("%d",&choice);
+        choice=2; //Check here
         switch (choice) {
-            case 1: reg(sockfd); break;
-            case 2: if(login(sockfd)) file_menu(sockfd); break;
-            case 3: closeConnection(sockfd);exit(0);
+            case 1: reg(); break;
+            case 2: if(login()) file_menu(); break;
+            case 3: closeConnection();exit(0);
             default: printf("Invalid Option selected..!! \n");
         }
     }
@@ -356,15 +337,45 @@ void menu(int sockfd){
 
 //////////////////////////////// MAIN
 
+
+void *PrintHello(void *threadid) {
+   long tid;
+   tid = (long)threadid;
+   int random_number = rand();
+   cout << "Starting Thread ID, " << tid <<" "<<random_number<< endl;
+   establishConenction();
+   menu();
+   closeConnection();
+   pthread_exit(NULL);
+}
+
+
 int main(int argc, char *argv[]){
-  if(argc<3){
-    fprintf(stderr,"usage %s hostname server port\n", argv[0] );
+  if(argc<5){
+    fprintf(stderr,"usage %s (hostname) (server) (port) (no_of_threads) (0:Download/1:Upload/2:Mixed)\n", argv[0] );
     exit(0);
   }
     snprintf(HOST,sizeof(HOST),"%s",argv[1]);
     PORT=atoi(argv[2]);
-    int sockfd= establishConenction();
-    menu(sockfd);
-    closeConnection(sockfd);
+    int NUM_THREADS=atoi(argv[3]);
+    global_choice = atoi(argv[4]);
+
+    pthread_t threads[NUM_THREADS];
+    int rc;
+    int i;
+    srand(time(NULL));
+    for( i = 0; i < NUM_THREADS; i++ ) {
+       cout << "Creating thread, " << i << endl;
+       rc = pthread_create(&threads[i], NULL, PrintHello, (void *)i);
+
+       if (rc) {
+          cout << "Error:unable to create thread," << rc << endl;
+          exit(-1);
+       }
+    }
+    pthread_exit(NULL);
+
+
+
     return 0;
 }
