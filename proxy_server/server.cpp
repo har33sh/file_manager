@@ -22,6 +22,12 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <unistd.h>
+#include <sys/signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include<signal.h>
 
 #include "db.h"
 
@@ -52,10 +58,10 @@ struct sockaddr_in file_serv_addr;
 struct hostent *fileserver;
 
 //declarations
-void closeFileServerConnection();
 void receiveMessage();
 void sendMessage();
 void home_page();
+void closeConnection();
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -77,7 +83,7 @@ void connectToFileServer(){
     error("ERROR opening socket");
     fileserver = gethostbyname(FILE_SERVER);
     if (fileserver == NULL) {
-        fprintf(stderr,"ERROR,File server not found\n");
+        fprintf(stderr,"ERROR,File server not found :: connectToFileServer\n");
         exit(0);
     }
     bzero((char *) &file_serv_addr, sizeof(file_serv_addr));
@@ -87,7 +93,7 @@ void connectToFileServer(){
     fileserver->h_length);
     file_serv_addr.sin_port = htons(FILE_SERVER_PORT);
     if (connect(sockfd_file,(struct sockaddr *) &file_serv_addr,sizeof(file_serv_addr)) < 0)
-    error("ERROR connecting");
+    error("ERROR connecting :: connectToFileServer");
 }
 
 
@@ -95,7 +101,7 @@ void forwardMessage(){
     forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
     printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
     if (forwaded_bytes < 0)
-        error("ERROR writing to socket");
+        error("ERROR writing to socket :: forwardMessage");
 }
 
 void recvFileServerMessage(){
@@ -103,37 +109,31 @@ void recvFileServerMessage(){
     fs_recv_bytes=0;
     while (fs_recv_bytes==0)
       fs_recv_bytes=read(sockfd_file,msg_from_fs,BUFFER_SIZE);
-    if (fs_recv_bytes < 0)
-        error("ERROR reading from socket");
+    if (fs_recv_bytes < 0){
+        error("ERROR reading from socket :: recvFileServerMessage");
+        closeConnection();
+    }
     printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
-    if (fs_recv_bytes==0){ // handeling closed connections
-      server_reconnect-=1;
-      if(server_reconnect==0){
-        printf("Server has gone away \n" );
-        closeFileServerConnection();
-        home_page();
-      }
+    if (fs_recv_bytes==0){
+        printf("Server has gone away :: recvFileServerMessage \n" );
+        closeConnection();
     }
 }
 
 
-
-void closeFileServerConnection(){
-    close(sockfd_file);
-}
 
 
 //forwards download request to file server
 void start_proxy_server(){
     pid_t pid;
     pid = fork();
-    if (pid==0){ //child process
+    if (pid!=0){ //parent process
         while (true){
             receiveMessage();
             forwardMessage();
         }
     }
-    else{ //parent process
+    else{ //child process
         while(true){
             recvFileServerMessage();
             sendMessage();
@@ -167,16 +167,19 @@ void establishConenction(){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
+        waitpid(-1, 0, WNOHANG); //zombie handeling
         printf("Client conneced :: Main process forked\n" );
         pid = fork();
-        if (newsockfd < 0)
+        if (newsockfd < 0){
             error("ERROR on accept");
+            closeConnection();
+        }
         if(pid!=0){
             close(newsockfd);
             continue;
         }
         else{
-            printf("Moving the process control for client :: Child \n" );
+            printf("Moving the process control for client :: Child %d\n" ,getpid());
             connectToFileServer();
             break;
         }
@@ -186,9 +189,30 @@ void establishConenction(){
 
 
 void closeConnection(){ //closes connection with client and proxy server
-    close(newsockfd);
-    close(sockfd);
-    printf("Closed all connections.." );
+    printf("Closing Connections\n" );
+    snprintf(send_message,sizeof(send_message),"0,Exiting");
+    try{
+        // write(sockfd,send_message,sizeof(send_message)); //causes problem
+        close(sockfd);
+        printf("Closed File Server Connection \n" );
+    }
+    catch(int e){
+        printf("File server was closed before\n" );
+    }
+
+    try{
+        write(newsockfd,send_message,sizeof(send_message));
+        close(newsockfd);
+        printf("Closed Client Connection  \n" );
+    }
+    catch(int e){
+        printf("Client is already closed\n" );
+    }
+
+    printf("Closed all connections.. killed process %d\n",getpid() );
+    // signal(SIGINT,closeConnection); //trying to kill children if any
+    kill(0,SIGTERM);
+    // exit(0);
 }
 
 
@@ -202,18 +226,15 @@ void sendMessage(){
 
 void receiveMessage(){
     bzero(msg_from_client   ,BUFFER_SIZE);
-    bytes_read =0;
-    while(bytes_read==0)
-      bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
+    bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
     printf("----->%d %s\n",bytes_read,"msg_from_client");
-    if (bytes_read < 0)
-        error("ERROR reading from socket");
-    if(bytes_read==0){
-      client_reconnnect-=1;
-      if(client_reconnnect==0){
-        printf("Client has gone away..!!\n" );
+    if (bytes_read < 0){
+        error("ERROR reading from socket :: receiveMessage");
         closeConnection();
-      }
+    }
+    if(bytes_read==0){
+        printf("Client has gone away..!! :: receiveMessage\n" );
+        closeConnection();
     }
 }
 
@@ -260,7 +281,7 @@ void home_page(){
                     snprintf(response_message, sizeof(response_message),"false");
                  break;
 
-        case 0: closeConnection();exit(0);
+        case 0: snprintf(msg_from_client,sizeof(msg_from_client),"0, Client Exit");forwardMessage(); closeConnection();
         default: printf("Root, We have a problem...!\n");
                  printf("%d %s %s\n",choice,username,password );
                  closeConnection();
@@ -282,7 +303,7 @@ int main(int argc, char *argv[]){
      PORT=atoi(argv[3]);
      establishConenction();
      home_page();
-     printf("!!!!!!!!!!!!!!! The place of smokes !!!!!!!!!!!!!!!" );
+     printf("!!!!!!!!!!!!!!! The place of smokes  %d !!!!!!!!!!!!!!!\n" , getpid());
      start_proxy_server();
      closeConnection();
      return 0;

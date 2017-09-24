@@ -56,6 +56,7 @@ void establishConenction(){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
+        waitpid(-1, 0, WNOHANG); //zombie handeling
         printf("Proxy Server connected :: Main Process forked \n" );
         pid = fork();
         if (newsockfd < 0)
@@ -65,7 +66,7 @@ void establishConenction(){
             continue;
         }
         else{
-            printf("Moving the Process control for proxy server :: Child\n" );
+            printf("Moving the Process control for proxy server :: Child %d\n" ,getpid());
             break;
         }
     }
@@ -74,9 +75,16 @@ void establishConenction(){
 
 
 void closeConnection(){
-    close(newsockfd);
-    close(sockfd);
-    printf("Closed all connections..\n" );
+    printf("Closing Connections\n" );
+    try{
+        close(newsockfd);
+        printf("Closed Proxy Server Connection  \n" );
+    }
+    catch(int e){
+        printf("Proxy Server is already closed\n" );
+    }
+    printf("Closed all connections.. killed process %d\n",getpid() );
+    exit(0);
 }
 
 
@@ -85,15 +93,17 @@ void sendMessage(){
     int bytes_written = write(newsockfd,send_message,strlen(send_message));
     printf("<-----%d %s\n",bytes_written,send_message);
     if (bytes_written < 0)
-        error("ERROR writing to socket");
+        error("ERROR writing to socket ::sendMessage");
 }
 
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
     int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
     printf("----->%d %s\n",bytes_read,response_message);
-    if (bytes_read < 0)
-        error("ERROR reading from socket");
+    if (bytes_read <=0){
+        error("ERROR reading from socket :: receiveMessage");
+        closeConnection();
+    }
 }
 
 
@@ -123,6 +133,10 @@ void fileRecieve(){
     bytes_left=filesize;
     while (bytes_left>0){
         bytes_read = read(newsockfd,file_buffer,min(BUFFER_SIZE,bytes_left)) ;
+        if (bytes_read <=0){
+            error("ERROR reading from socket :: File Receiving");
+            closeConnection();
+        }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
         printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
@@ -217,6 +231,10 @@ void fileSend(){
         receiveMessage(); //let it wait
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), min(BUFFER_SIZE,bytes_left), f);
+            if (bytes_read <=0){
+                error("ERROR reading from socket :: File Sending");
+                closeConnection();
+            }
             bytes_written = write(newsockfd, file_buffer, bytes_read);
             receiveMessage();
             if(!verify_ack(bytes_left)){
@@ -235,7 +253,7 @@ void fileSend(){
 
 //process message and sent response
 void onMessage(char *buffers){
-    update_file_list();
+    // update_file_list();
     printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
@@ -246,7 +264,7 @@ void onMessage(char *buffers){
     switch (choice) {
         case 4: fileRecieve(); break;
         case 5: fileSend();break;
-        case 0: closeConnection();exit(0);
+        case 0: closeConnection();
         default : printf("Admin, we have a issue..! %d %s %s\n",choice,msg1,msg2);
                   printf("%d %s %s\n",choice,msg1,msg2 );
                   closeConnection();
@@ -262,9 +280,9 @@ void start_server(){
         while(true){
             bzero(buffer,256);
             n = read(newsockfd,buffer,255);
-            if (n < 0) error("ERROR reading from socket");
+            if (n <= 0) {error("ERROR reading from socket :: Start Server"); closeConnection(); }
             onMessage(buffer);
-            if (n < 0) error("ERROR writing to socket");
+            if (n <= 0) error("ERROR writing to socket :: Start Server");
         }
 }
 
