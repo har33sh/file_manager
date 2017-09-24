@@ -99,7 +99,7 @@ void connectToFileServer(){
 
 void forwardMessage(){
     forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
-    printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
+    // printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
     if (forwaded_bytes < 0)
         error("ERROR writing to socket :: forwardMessage");
 }
@@ -113,7 +113,7 @@ void recvFileServerMessage(){
         error("ERROR reading from socket :: recvFileServerMessage");
         closeConnection();
     }
-    printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
+    // printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
     if (fs_recv_bytes==0){
         printf("Server has gone away :: recvFileServerMessage \n" );
         closeConnection();
@@ -211,15 +211,15 @@ void closeConnection(){ //closes connection with client and proxy server
 
     printf("Closed all connections.. killed process %d\n",getpid() );
     // signal(SIGINT,closeConnection); //trying to kill children if any
-    kill(0,SIGTERM);
-    // exit(0);
+    // kill(0,SIGTERM);
+    exit(0);
 }
 
 
 
 void sendMessage(){
         int bytes_written = write(newsockfd,msg_from_fs,fs_recv_bytes);
-        printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
+        // printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
@@ -227,7 +227,7 @@ void sendMessage(){
 void receiveMessage(){
     bzero(msg_from_client   ,BUFFER_SIZE);
     bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
-    printf("----->%d %s\n",bytes_read,"msg_from_client");
+    // printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0){
         error("ERROR reading from socket :: receiveMessage");
         closeConnection();

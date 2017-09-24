@@ -31,7 +31,7 @@
 using namespace std;
 
 //Config
-bool debug =true;
+bool debug =false;
 char *filename = (char *)"/a.txt";
 char HOST[50];
 int PORT;
@@ -74,7 +74,7 @@ int establishConenction(){
 void sendMessage(int sockfd,char *send_message){
         int bytes_written = write(sockfd,send_message,strlen(send_message));
         if(debug)
-            printf("<-----%d %s\n",bytes_written,send_message);
+             printf("<-----%d %s\n",bytes_written,send_message);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 
@@ -84,7 +84,7 @@ char* receiveMessage(int sockfd, char *response_message){
     bzero(response_message,BUFFER_SIZE);
     int bytes_read=read(sockfd,response_message,BUFFER_SIZE);
     if (debug)
-        printf("----->%d %s\n",bytes_read,response_message);
+         printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read < 0)
         error("ERROR reading from socket");
     return response_message;
@@ -111,7 +111,7 @@ void closeConnection(int sockfd){
 bool verify_ack(int left,char response_message[BUFFER_SIZE]){
   char *_=  strtok(response_message, ",");
   int  ack_sent= atoi(strtok(NULL, ","));
-  printf("%d %d\n",left,ack_sent );
+  //printf("%d %d\n",left,ack_sent );
   if(ack_sent==left)
     return true;
   return false;
@@ -138,7 +138,7 @@ int upload(int sockfd){
         snprintf(send_message, sizeof(send_message), "%d,%d_ignore", fsize,sockfd);
         sendMessage(sockfd,send_message);
         bytes_left=fsize;
-        printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
+        //printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
         receiveMessage(sockfd,response_message);
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
@@ -153,7 +153,7 @@ int upload(int sockfd){
                   break;
             }
         }
-        printf("%s File Successfully uploaded\n", filename);
+        //printf("%s File Successfully uploaded\n", filename);
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
@@ -210,7 +210,7 @@ void download(int sockfd){
     int choice=2;
     char save_file[100];
     snprintf(save_file, sizeof(save_file), "%d_ignore",sockfd);
-    printf("Downloading... %s\n",save_file);
+    //printf("Downloading... %s\n",save_file);
     snprintf(send_message, sizeof(send_message), "%d,",choice);
     sendMessage(sockfd,send_message); //sending the choice
     if (debug)
@@ -250,7 +250,7 @@ void reg(int sockfd){ //add random and confiure
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE];
     bool availablity=false;
     char password[20];
-    printf("Enter username : ");
+    //printf("Enter username : ");
     scanf("%s",username );
     snprintf(send_message, sizeof(send_message), "%s,%s", "1",username);
     sendMessage(sockfd,send_message);
