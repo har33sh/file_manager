@@ -111,9 +111,9 @@ void closeConnection(int sockfd){
 bool verify_ack(int left,char response_message[BUFFER_SIZE]){
   char *_=  strtok(response_message, ",");
   int  ack_sent= atoi(strtok(NULL, ","));
-  //printf("%d %d\n",left,ack_sent );
   if(ack_sent==left)
     return true;
+  printf("%d %d\n",left,ack_sent );
   return false;
 }
 
@@ -121,7 +121,7 @@ bool verify_ack(int left,char response_message[BUFFER_SIZE]){
 int upload(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
-    snprintf(send_message, sizeof(send_message),"%d,%s", 4,username);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 4,"username");
     sendMessage(sockfd,send_message);
     receiveMessage(sockfd,response_message);
     int fsize,bytes_read,bytes_written,bytes_left;
@@ -138,7 +138,7 @@ int upload(int sockfd){
         snprintf(send_message, sizeof(send_message), "%d,%d_ignore", fsize,sockfd);
         sendMessage(sockfd,send_message);
         bytes_left=fsize;
-        //printf("FileSize : %d  FileName : %s \nUploading the file...... \n",fsize,filename);
+        if (debug) printf("FileSize : %d  FileName : %s save as : %d_ignore ...... \n",fsize,filename,sockfd);
         receiveMessage(sockfd,response_message);
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
@@ -283,14 +283,13 @@ bool login(int sockfd){
     sendMessage(sockfd,send_message);
     printf("ffff\n" );
     receiveMessage(sockfd,response_message);
-    printf("see %s",response_message );
     if(response_message[0]=='t')
       auth=true;
     while(!auth){
         printf("Bad username or password \n add user abc to DB ");
         exit(0);
         }
-    printf("### user %s Successfully Authenticated  ###\n",username );
+    printf("### user %s Successfully Authenticated  ###\n","abc" );
     return auth;
 }
 
@@ -316,9 +315,7 @@ void file_menu(int sockfd){
 
 void menu(int sockfd){
     int choice;
-    printf("//////////////////////////////////////////////////////////////////////////////\n");
-    printf("///////////////////////////        FILE SERVER         ///////////////////////\n");
-    printf("//////////////////////////////////////////////////////////////////////////////\n");
+    printf("///////////////////////        FILE SERVER         ///////////////////\n");
     while (true) {
         choice=2;
         switch (choice) {

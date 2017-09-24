@@ -51,6 +51,8 @@ struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
+bool showall=false;
+
 using namespace std;
 
 int sockfd_file;
@@ -99,7 +101,7 @@ void connectToFileServer(){
 
 void forwardMessage(){
     forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
-    // printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
+    if (showall) printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
     if (forwaded_bytes < 0)
         error("ERROR writing to socket :: forwardMessage");
 }
@@ -113,7 +115,7 @@ void recvFileServerMessage(){
         error("ERROR reading from socket :: recvFileServerMessage");
         closeConnection();
     }
-    // printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
+    if (showall) printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
     if (fs_recv_bytes==0){
         printf("Server has gone away :: recvFileServerMessage \n" );
         closeConnection();
@@ -168,7 +170,7 @@ void establishConenction(){
             (struct sockaddr *) &cli_addr,
             &clilen);
         waitpid(-1, 0, WNOHANG); //zombie handeling
-        printf("Client conneced :: Main process forked\n" );
+        if (showall) printf("Client conneced :: Main process forked\n" );
         pid = fork();
         if (newsockfd < 0){
             error("ERROR on accept");
@@ -189,21 +191,21 @@ void establishConenction(){
 
 
 void closeConnection(){ //closes connection with client and proxy server
-    printf("Closing Connections\n" );
+    if (showall) printf("Closing Connections\n" );
     snprintf(send_message,sizeof(send_message),"0,Exiting");
     try{
         // write(sockfd,send_message,sizeof(send_message)); //causes problem
         close(sockfd);
-        printf("Closed File Server Connection \n" );
+        if (showall) printf("Closed File Server Connection \n" );
     }
     catch(int e){
-        printf("File server was closed before\n" );
+        if (showall) printf("File server was closed before\n" );
     }
 
     try{
         write(newsockfd,send_message,sizeof(send_message));
         close(newsockfd);
-        printf("Closed Client Connection  \n" );
+        if (showall) printf("Closed Client Connection  \n" );
     }
     catch(int e){
         printf("Client is already closed\n" );
@@ -219,7 +221,7 @@ void closeConnection(){ //closes connection with client and proxy server
 
 void sendMessage(){
         int bytes_written = write(newsockfd,msg_from_fs,fs_recv_bytes);
-        // printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
+        if (showall) printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
@@ -227,7 +229,7 @@ void sendMessage(){
 void receiveMessage(){
     bzero(msg_from_client   ,BUFFER_SIZE);
     bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
-    // printf("----->%d %s\n",bytes_read,"msg_from_client");
+    if (showall) printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0){
         error("ERROR reading from socket :: receiveMessage");
         closeConnection();

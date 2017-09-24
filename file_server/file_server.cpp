@@ -8,6 +8,13 @@
 #include <netinet/in.h>
 #include<dirent.h>
 #include <string>
+#include <sys/signal.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <sys/time.h>
+#include <sys/resource.h>
+#include<signal.h>
+
 using namespace std;
 
 //config
@@ -16,7 +23,7 @@ int PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
-
+bool showall=false;
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
@@ -57,7 +64,7 @@ void establishConenction(){
             (struct sockaddr *) &cli_addr,
             &clilen);
         waitpid(-1, 0, WNOHANG); //zombie handeling
-        printf("Proxy Server connected :: Main Process forked \n" );
+        if (showall) printf("Proxy Server connected :: Main Process forked \n" );
         pid = fork();
         if (newsockfd < 0)
             error("ERROR on accept");
@@ -75,13 +82,13 @@ void establishConenction(){
 
 
 void closeConnection(){
-    printf("Closing Connections\n" );
+    if (showall) printf("Closing Connections\n" );
     try{
         close(newsockfd);
-        printf("Closed Proxy Server Connection  \n" );
+        if (showall) printf("Closed Proxy Server Connection  \n" );
     }
     catch(int e){
-        printf("Proxy Server is already closed\n" );
+         if (showall) printf("Proxy Server is already closed\n" );
     }
     printf("Closed all connections.. killed process %d\n",getpid() );
     exit(0);
@@ -91,7 +98,7 @@ void closeConnection(){
 
 void sendMessage(){
     int bytes_written = write(newsockfd,send_message,strlen(send_message));
-    printf("<-----%d %s\n",bytes_written,send_message);
+    if (showall)  printf("<-----%d %s\n",bytes_written,send_message);
     if (bytes_written < 0)
         error("ERROR writing to socket ::sendMessage");
 }
@@ -99,7 +106,7 @@ void sendMessage(){
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
     int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
-    printf("----->%d %s\n",bytes_read,response_message);
+    if (showall) printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read <=0){
         error("ERROR reading from socket :: receiveMessage");
         closeConnection();
@@ -114,7 +121,7 @@ void receiveMessage(){
 
 
 void fileRecieve(){
-    printf("======== File Receiving =========\n");
+    if (showall)  printf("======== File Receiving =========\n");
     FILE *fp;
     int bytes_left,bytes_read,bytes_written;
     snprintf(send_message,sizeof(send_message),"%s","Started fileReceive()");
@@ -122,10 +129,10 @@ void fileRecieve(){
     receiveMessage();
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
-    printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
+    if (showall) printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
     char file_location[100];
     snprintf(file_location,sizeof(file_location),"%s/%s",file_dir,filename); //can add auth_user here
-    printf("file name is %s\n",file_location );
+    if (showall) printf("file name is %s\n",file_location );
     fp = fopen(file_location, "wb");
     snprintf(send_message, sizeof(send_message), "%s","Ready to recive");
     sendMessage();
@@ -139,15 +146,15 @@ void fileRecieve(){
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
-        printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
+        if (showall)printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
         snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
         sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
-    printf("Received File: %s Received: %d  Wrote: %d \n",filename,(filesize-bytes_left),filesize );
+    if (showall) printf("Received File: %s Received: %d  Wrote: %d \n",filename,(filesize-bytes_left),filesize );
     snprintf(response_message, sizeof(response_message), "Received Successfully");
-    printf("========End of File Receiving =========\n");
+    printf("%d ========End of File Receiving =========\n",getpid());
 }
 
 
@@ -181,35 +188,35 @@ void send_file_list(){
     receiveMessage(); //For Sync
     int bytes_read,bytes_written,bytes_left;
     bytes_left=filesize;
-    printf("Sending the file list ...... Size %d\n",filesize);
+    if (showall) printf("Sending the file list ...... Size %d\n",filesize);
     bzero(file_buffer,BUFFER_SIZE);
     while (bytes_left>0){
         bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
         bytes_written = write(newsockfd, file_buffer, bytes_read);
         bytes_left-=bytes_written;
     }
-    printf("File list Successfully\n");
+    printf("%d File list Successfully\n",getpid());
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
 }
 bool verify_ack(int left){
   char *_=  strtok(response_message, ",");
   int  ack_sent= atoi(strtok(NULL, ","));
-  printf("%d %d\n",left,ack_sent );
+  if (showall) printf("%d %d\n",left,ack_sent );
   if(ack_sent==left)
     return true;
   return false;
 }
 
 void fileSend(){
-    printf("======== File Sending =========\n");
+    printf("%d ======== File Sending =========\n",getpid());
     send_file_list();
     receiveMessage(); //get the choice from client
     int choice=  atoi(strtok(response_message, ","));
-    printf("input %d\n",choice );
+    if (showall) printf("input %d\n",choice );
     char filename[100];
     if(choice>max_files){
-      printf("Illegal Request" );
+      if (showall) printf("Illegal Request" );
       return;
     }
     snprintf(filename,sizeof(filename),"%s/%s",file_dir,file_names[choice]); //file abs address
@@ -227,7 +234,7 @@ void fileSend(){
         sendMessage();//sending the file details
 
         bytes_left=fsize;
-        printf("Requesting the file FileSize : %d  FileName : %s \n",fsize,filename);
+        if (showall) printf("Requesting the file FileSize : %d  FileName : %s \n",fsize,filename);
         receiveMessage(); //let it wait
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), min(BUFFER_SIZE,bytes_left), f);
@@ -238,23 +245,23 @@ void fileSend(){
             bytes_written = write(newsockfd, file_buffer, bytes_read);
             receiveMessage();
             if(!verify_ack(bytes_left)){
-                  printf("Bad Ack Received\n" );
+                  printf("%d Bad Ack Received\n",getpid() );
                   break;
                 }
             bytes_left-=bytes_written;
-            printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
+            if (showall) printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
         }
         printf("%s File Sent Successfully \n", filename);
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
-    printf("======== End of File Sending =========\n");
+    printf("%d ======== End of File Sending =========\n",getpid());
 }
 
 //process message and sent response
 void onMessage(char *buffers){
     // update_file_list();
-    printf("Message Recv : %s\n",buffer);
+    if (showall) printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
     char *msg2=strtok(NULL, ",");
@@ -270,7 +277,7 @@ void onMessage(char *buffers){
                   closeConnection();
 
     }
-    printf("---King's Landing---\n" );
+    printf("%d ---King's Landing---\n", getpid());
 
 }
 
