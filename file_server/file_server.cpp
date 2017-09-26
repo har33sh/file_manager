@@ -22,7 +22,9 @@ using namespace std;
 int PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
-char file_list[]="/home/ghost/file_list.txt";
+char file_list[]="/home/ghost/file_list/";
+char file_list_name[BUFFER_SIZE];
+
 bool showall=true;
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
@@ -164,7 +166,9 @@ void update_file_list(){
     struct dirent *dir;
     d = opendir(file_dir);
     FILE *f;
-    f=fopen(file_list,"w");
+
+    snprintf(file_list_name,sizeof(file_list_name),"%s%d.txt",file_list,getpid());
+    f=fopen(file_list_name,"w");
     int i=1;
     while ((dir = readdir(d)) != NULL){
       snprintf(file_names[i],sizeof(file_names[i]),"%s",dir->d_name);
@@ -179,7 +183,7 @@ void update_file_list(){
 
 void send_file_list(){
     update_file_list();
-    FILE *f= fopen(file_list, "rb");
+    FILE *f= fopen(file_list_name, "rb");
     fseek(f, 0, SEEK_END);
     int filesize = ftell(f);
     rewind(f);
