@@ -102,11 +102,11 @@ void closeConnection(int sockfd){
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 bool verify_ack(int left,char response_message[BUFFER_SIZE]){
-  char *_=  strtok(response_message, ",");
-  int  ack_sent= atoi(strtok(NULL, ","));
-  printf("%d %d\n",left,ack_sent );
-  if(ack_sent==left)
+  int success,total,remaining;
+  sscanf(response_message,"%d %d %d", &success,&total,&remaining);
+  if(remaining==left)
     return true;
+  printf("%d %d\n",left,remaining );
   return false;
 }
 
