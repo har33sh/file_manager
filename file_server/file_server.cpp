@@ -23,7 +23,7 @@ int PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list.txt";
-bool showall=false;
+bool showall=true;
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
@@ -147,7 +147,7 @@ void fileRecieve(){
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
         if (showall)printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
-        snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
+        snprintf(send_message, sizeof(send_message),"%d %d %d",(filesize-bytes_left),filesize,bytes_left);
         sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);

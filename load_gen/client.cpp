@@ -31,13 +31,13 @@
 using namespace std;
 
 //Config
-bool debug =false;
+bool debug =true;
 char *filename = (char *)"/a.txt";
 char HOST[50];
 int PORT;
 #define BUFFER_SIZE 256
-int  portno, n;
 int type_load;
+
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -109,13 +109,15 @@ void closeConnection(int sockfd){
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 bool verify_ack(int left,char response_message[BUFFER_SIZE]){
-  char *_=  strtok(response_message, ",");
-  int  ack_sent= atoi(strtok(NULL, ","));
-  if(ack_sent==left)
+  int success,total,remaining;
+  sscanf(response_message,"%d %d %d", &success,&total,&remaining);
+  if(remaining==left)
     return true;
-  printf("%d %d\n",left,ack_sent );
+  printf("%d %d\n",left,remaining );
+  exit(0);
   return false;
 }
+
 
 //upload file
 int upload(int sockfd){
@@ -127,7 +129,7 @@ int upload(int sockfd){
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
-    if (f == NULL){
+    if (f == NULL   ){
         printf("%s File not found!\n",filename);
         return 1;
     }
@@ -146,14 +148,15 @@ int upload(int sockfd){
             bytes_left-=bytes_written;
             // printf("%s\n",file_buffer );
             if (debug)
-                printf("<----Uploaded %d of %d\n",(fsize-bytes_left),fsize );
+                printf("%d<----Uploaded %d of %d\n",sockfd,(fsize-bytes_left),fsize );
             receiveMessage(sockfd,response_message);
             if(!verify_ack(bytes_left,response_message)){
-                  printf("Bad Ack Received\n" );
+                  printf("Bad Ack Received %d %d\n",bytes_read,bytes_written );
+                //   printf("%d of %d\n",(fsize-bytes_left),fsize );
                   break;
             }
         }
-        //printf("%s File Successfully uploaded\n", filename);
+        if (debug)  printf("%s File Successfully uploaded\n", filename);
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
@@ -303,7 +306,9 @@ void logout(int sockfd){
 
 //later modify with private file storage --> If needed
 void file_menu(int sockfd){
+    long int iteration =1;
     while (true) {
+        printf("Iteration %d\n",iteration++ );
         switch (type_load) {
             case 1: upload(sockfd); break;
             case 2: download(sockfd); break;
@@ -332,8 +337,6 @@ void menu(int sockfd){
 //////////////////////////////// MAIN
 
 
-
-#define NUM_THREADS 5
 
 void *PrintHello(void *threadid) {
    long tid;
