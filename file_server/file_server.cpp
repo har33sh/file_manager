@@ -30,7 +30,7 @@ bool showall=true;
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
-char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[100][100];
+char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[1000][100];
 char buffer[256],auth_user[100];
 
 
@@ -170,14 +170,18 @@ void update_file_list(){
     snprintf(file_list_name,sizeof(file_list_name),"%s%d.txt",file_list,getpid());
     f=fopen(file_list_name,"w");
     int i=1;
+    printf("%s\n",file_list_name );
     while ((dir = readdir(d)) != NULL){
       snprintf(file_names[i],sizeof(file_names[i]),"%s",dir->d_name);
       fprintf(f, "%d : %s\n",i,file_names[i] );
+      printf("%d : %s\n",i,file_names[i] );
       i++;
+      if (i>999) break ; // quick fix, a page can show only 999 entries
     }
     max_files=i;
     closedir(d);
     fclose(f);
+    printf("Updated file list\n");
 
 }
 
@@ -203,12 +207,13 @@ void send_file_list(){
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
 }
+
 bool verify_ack(int left){
-  char *_=  strtok(response_message, ",");
-  int  ack_sent= atoi(strtok(NULL, ","));
-  if (showall) printf("%d %d\n",left,ack_sent );
-  if(ack_sent==left)
+  int success,total,remaining;
+  sscanf(response_message,"%d %d %d", &success,&total,&remaining);
+  if(remaining==left)
     return true;
+  printf("%d %d\n",left,remaining );
   return false;
 }
 

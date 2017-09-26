@@ -41,7 +41,7 @@ int FILE_SERVER_PORT,PORT;
 char FILE_SERVER[50];
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
-char file_list[]="/home/ghost/file_list.txt";
+char file_list[]="/home/ghost/file_list/";
 
 
 //Global paramaters

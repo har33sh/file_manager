@@ -207,13 +207,13 @@ void load_file_list(int sockfd){
 void download(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
-    snprintf(send_message, sizeof(send_message),"%d,%s", 5,username);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 5,"username");
     sendMessage(sockfd,send_message);
     load_file_list(sockfd);
-    int choice=2;
+    int choice=3;
     char save_file[100];
-    snprintf(save_file, sizeof(save_file), "%d_ignore",sockfd);
-    //printf("Downloading... %s\n",save_file);
+    snprintf(save_file, sizeof(save_file), "temp/%d_ignore",sockfd);
+    printf("Downloading... %s\n",save_file);
     snprintf(send_message, sizeof(send_message), "%d,",choice);
     sendMessage(sockfd,send_message); //sending the choice
     if (debug)
@@ -232,7 +232,7 @@ void download(int sockfd){
           printf("%s\n", "Socket cant read");
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
-        snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
+        snprintf(send_message, sizeof(send_message),"%d %d %d",(filesize-bytes_left),filesize,bytes_left);
         sendMessage(sockfd,send_message); //Ack Message
         bytes_left-=bytes_written;
         if (debug)
@@ -308,7 +308,7 @@ void logout(int sockfd){
 void file_menu(int sockfd){
     long int iteration =1;
     while (true) {
-        printf("Iteration %d\n",iteration++ );
+        printf("Iteration %ld\n",iteration++ );
         switch (type_load) {
             case 1: upload(sockfd); break;
             case 2: download(sockfd); break;
