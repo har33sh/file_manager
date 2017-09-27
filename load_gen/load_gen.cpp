@@ -31,7 +31,7 @@
 using namespace std;
 
 //Config
-bool debug =true;
+bool debug =false;
 char *filename = (char *)"/a.txt";
 char HOST[50];
 int PORT;
@@ -156,10 +156,10 @@ int upload(int sockfd){
                   break;
             }
         }
-        if (debug)  printf("%s File Successfully uploaded\n", filename);
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
+    printf("%d | %s File Successfully uploaded\n",sockfd, filename);
     return 0;
 }
 
@@ -196,10 +196,10 @@ void load_file_list(int sockfd){
         printf("Received File List FileSize: %d Received %d\n",(filesize-bytes_left),filesize);
     char c;
     fp = fopen(".file_list.txt", "r");
-    printf("\n##### File List ####\n");
+    if(debug) printf("\n##### File List ####\n");
     while ((c=fgetc(fp))!=EOF)
-      printf("%c",c );
-    printf("\n####################\n");
+      if(debug) printf("%c",c );
+    if(debug) printf("\n####################\n");
     fclose(fp);
 }
 
@@ -213,7 +213,7 @@ void download(int sockfd){
     int choice=3;
     char save_file[100];
     snprintf(save_file, sizeof(save_file), "temp/%d_ignore",sockfd);
-    printf("Downloading... %s\n",save_file);
+    if (debug) printf("Downloading... %s\n",save_file);
     snprintf(send_message, sizeof(send_message), "%d,",choice);
     sendMessage(sockfd,send_message); //sending the choice
     if (debug)
@@ -241,7 +241,7 @@ void download(int sockfd){
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
     // receiveMessage(sockfd,response_message); //Server sends a completion flag from the whil true loop
-    printf("Download File: %s filesize: %d\n",save_file,filesize );
+    printf("%d | %s file Downloaded,  Filesize: %d\n",sockfd , save_file,filesize );
 }
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -308,7 +308,7 @@ void logout(int sockfd){
 void file_menu(int sockfd){
     long int iteration =1;
     while (true) {
-        printf("Iteration %ld\n",iteration++ );
+        printf("Iteration %ld  |  ",iteration++ );
         switch (type_load) {
             case 1: upload(sockfd); break;
             case 2: download(sockfd); break;
