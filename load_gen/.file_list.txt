@@ -1,4 +1,4 @@
 1 : .
 2 : ..
 3 : 3_ignore
-4 : 5_ignore
+4 : t.txt

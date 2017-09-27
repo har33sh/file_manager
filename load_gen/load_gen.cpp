@@ -27,6 +27,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <stdlib.h>
+#include <sys/time.h>
 
 using namespace std;
 
@@ -37,7 +38,7 @@ char HOST[50];
 int PORT;
 #define BUFFER_SIZE 256
 int type_load;
-
+struct timeval stop, start;
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -124,8 +125,16 @@ int upload(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 4,"username");
+    gettimeofday(&start, NULL);
     sendMessage(sockfd,send_message);
     receiveMessage(sockfd,response_message);
+    gettimeofday(&stop, NULL);
+    char log_file_name[100];
+    snprintf(log_file_name,sizeof(log_file_name),"response_logs/%d.log",sockfd);
+    FILE *log_response_time= fopen(log_file_name,"a");
+    if ((stop.tv_usec - start.tv_usec )>0)
+      fprintf(log_response_time,"%ld\n", stop.tv_usec - start.tv_usec);
+    fclose(log_response_time);
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
@@ -159,6 +168,11 @@ int upload(int sockfd){
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
+    snprintf(log_file_name,sizeof(log_file_name),"throughput/%d.log",sockfd);
+    log_response_time= fopen(log_file_name,"a");
+    fprintf(log_response_time,"1\n");
+    fclose(log_response_time);
+
     printf("%d | %s File Successfully uploaded\n",sockfd, filename);
     return 0;
 }
@@ -173,6 +187,13 @@ int min(int x,int y) {
 void load_file_list(int sockfd){
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     receiveMessage(sockfd,response_message);
+    gettimeofday(&stop, NULL);
+    char log_file_name[100];
+    snprintf(log_file_name,sizeof(log_file_name),"response_logs/%d.log",sockfd);
+    FILE *log_response_time= fopen(log_file_name,"a");
+    if ((stop.tv_usec - start.tv_usec )>0)
+      fprintf(log_response_time,"%ld\n", stop.tv_usec - start.tv_usec);
+    fclose(log_response_time);
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
     if(debug)
@@ -208,6 +229,7 @@ void download(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 5,"username");
+    gettimeofday(&start, NULL);
     sendMessage(sockfd,send_message);
     load_file_list(sockfd);
     int choice=3;
@@ -241,6 +263,13 @@ void download(int sockfd){
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
     // receiveMessage(sockfd,response_message); //Server sends a completion flag from the whil true loop
+
+    char log_file_name[100];
+    snprintf(log_file_name,sizeof(log_file_name),"throughput/%d.log",sockfd);
+    FILE *log_response_time= fopen(log_file_name,"a");
+    fprintf(log_response_time,"1\n");
+    fclose(log_response_time);
+
     printf("%d | %s file Downloaded,  Filesize: %d\n",sockfd , save_file,filesize );
 }
 
@@ -338,7 +367,7 @@ void menu(int sockfd){
 
 
 
-void *PrintHello(void *threadid) {
+void *start_threads(void *threadid) {
    long tid;
    tid = (long)threadid;
    int random_number = rand();
@@ -368,7 +397,7 @@ int main (int argc, char *argv[]) {
   srand(time(NULL));
   for( i = 0; i < no_of_threads; i++ ) {
     cout << "Creating thread, " << i << endl;
-    rc = pthread_create(&threads[i], NULL, PrintHello, (void *)i);
+    rc = pthread_create(&threads[i], NULL, start_threads, (void *)i);
 
     if (rc) {
        cout << "Error:unable to create thread," << rc << endl;
