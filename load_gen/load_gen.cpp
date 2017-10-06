@@ -44,8 +44,9 @@ struct timeval stop, start;
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 void error(const char *msg){
-    perror(msg);
-    exit(0);
+    // perror(msg);
+    cerr << msg << endl;
+    // exit(0);
 }
 
 //Establish connection to server
@@ -86,8 +87,10 @@ char* receiveMessage(int sockfd, char *response_message){
     int bytes_read=read(sockfd,response_message,BUFFER_SIZE);
     if (debug)
          printf("----->%d %s\n",bytes_read,response_message);
-    if (bytes_read < 0)
-        error("ERROR reading from socket");
+    if (bytes_read < 0){
+      printf("----->%d %s %d\n",bytes_read,response_message,sockfd);
+      error("ERROR reading from socket ");
+    }
     return response_message;
 }
 
@@ -115,7 +118,7 @@ bool verify_ack(int left,char response_message[BUFFER_SIZE]){
   if(remaining==left)
     return true;
   printf("%d %d\n",left,remaining );
-  exit(0);
+  pthread_exit(0);
   return false;
 }
 
@@ -173,7 +176,7 @@ int upload(int sockfd){
     fprintf(log_response_time,"1\n");
     fclose(log_response_time);
 
-    printf("%d | %s File Successfully uploaded\n",sockfd, filename);
+    // printf("%d | %s File Successfully uploaded\n",sockfd, filename);
     return 0;
 }
 
@@ -319,7 +322,8 @@ bool login(int sockfd){
       auth=true;
     while(!auth){
         printf("Bad username or password \n add user abc to DB ");
-        exit(0);
+        error("Bad username or password \n add user abc to DB ");
+        pthread_exit(0);
         }
     printf("### user %s Successfully Authenticated  ###\n","abc" );
     return auth;
@@ -337,7 +341,7 @@ void logout(int sockfd){
 void file_menu(int sockfd){
     long int iteration =1;
     while (true) {
-        printf("Iteration %ld  |  ",iteration++ );
+        printf("%ld  |  %d \n",iteration++ ,sockfd );
         switch (type_load) {
             case 1: upload(sockfd); break;
             case 2: download(sockfd); break;

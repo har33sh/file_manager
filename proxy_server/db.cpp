@@ -43,6 +43,7 @@ bool authenticateUser(char *username_arg,char *password_arg){
       else
           auth=false;
     }
+  mysql_close(conn);
   delete res;
   delete stmt;
   delete con;
@@ -73,6 +74,7 @@ bool usernameAvailable(char *username_arg){
       cout << res->getString(1)<<" ";
       auth=false;
     }
+  mysql_close(conn);
   delete res;
   delete stmt;
   delete con;
@@ -100,6 +102,7 @@ bool createUser(char *username_arg,char *password_arg){
     con->setSchema(DB_NAME);
     stmt = con->createStatement();
     stmt->executeQuery("insert into users values('"+username+"','"+password+"');");
+    mysql_close(conn);
     delete res;
     delete stmt;
     delete con;
