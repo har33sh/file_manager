@@ -25,6 +25,7 @@ char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list/";
 char file_list_name[BUFFER_SIZE];
 
+bool disable=false;
 bool showall=false;
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
