@@ -1,0 +1,39 @@
+Generating the Load:
+./loadgen <ip> <port> <users> <request>
+
+ip      =>  IP address of the Proxy Server
+port    =>  Port at which the proxy server is listening
+users   =>  Number of users/threads
+request =>  Integer specifying the request types
+
+
+Request types:
+1 => Upload
+2 => Download
+3 => 50% Upload & 50% Download
+
+
+How the load is generated:
+The load generation is performed i7 intel core system with 8 cores. The file of size [XX} bytes is used for Uplaod and flie of size [XX} bytes is used for Download.
+
+The load is generated in the system mentioned above by using a multi-threaded closed loop load generator which repeatedely sends the specified request to the server. Each of the thread simulates clients in the load generator and does not have any interactivity, but just bombards requests to the server in an automated fashion.
+
+Closed loop testing is used where the N concurrent users will be simulated using N threads. Each of the N threads will emulate one user by issuing one request, waiting for it to complete, and issuing the next request immediately afterwards. There is no think time in between these requests.
+ 
+Since the system handels multiple types of requests ( Upload and Download ), load generator performs the load based on the type of request passed. The load generator can be used to perfrom load of only Upload or only of Download or Mixed load of 50% of Download and 50% Upload can also be performed. For example, one emulated user can issue multiple types of requests one after the other. Otherwise,  load generator can be used issue only one type of requests at a time, and perform the load test only for that type of traffic.
+
+   During the load test, the load on the server is increased  by increasing the number of concurrent users. For a given value of load, the experiment run for a 7 minutes, and the following parameters are measured of your system in steady state : the average throughput of your server (the number of requests/sec being successfully completed, averaged over the entire experiment) and the response time of the server (the average time taken for a request to complete, averaged over all completed requests). These values are measured in the load generator itself, the response time is the time interval between the 
+last byte send the first byte recievd from the server. The total number of the successfull requests completed by all the threads together during the entire process is calculated and is divided by the total time of the experiment duration to get the throughput in terms of requests per second. The csv file for the response time and the response time are also attached with this report.
+[GRAPH]
+The above graph shows as number of users increase, throughput flatten out and response time should starts increasing. The utilization of bottleneck also increases when the number of users also increases, which can be viewd using system monitor, htop, top or other such tools.
+
+   Taskset is used and the load generator is pinned to 4 cores, as the load generator should not itself be a bottleneck during the testing process, Proxy Server, MySQL Server and the File Server are assigned 1 core each during the load generation process. 
+
+   The system hits saturation when the number of users are  [XX} for Upload request, [XX} for Download request and [XX} for Mixed Request. During Upload request the bottleneck for the system is the [XYZ] , during the Download request the bottleneck for the system is the [XYZ] and during the mixed requests the bottleneck is the [XYZ].
+
+[SNAPSHOT]
+Snapshot the system when the system hits the saturation during the upload request.
+[SNAPSHOT] 
+Snapshot the system when the system hits the saturation during the download request.
+[SNAPSHOT]
+Snapshot the system when the system hits the saturation during the upload and download request.
