@@ -172,18 +172,18 @@ void update_file_list(){
     snprintf(file_list_name,sizeof(file_list_name),"%s%d.txt",file_list,getpid());
     f=fopen(file_list_name,"w");
     int i=1;
-    printf("%s\n",file_list_name );
+    if (debug) printf("%s\n",file_list_name );
     while ((dir = readdir(d)) != NULL){
       snprintf(file_names[i],sizeof(file_names[i]),"%s",dir->d_name);
       fprintf(f, "%d : %s\n",i,file_names[i] );
-      printf("%d : %s\n",i,file_names[i] );
+      if (debug) printf("%d : %s\n",i,file_names[i] );
       i++;
       if (i>999) break ; // quick fix, a page can show only 999 entries
     }
     max_files=i;
     closedir(d);
     fclose(f);
-    printf("Updated file list\n");
+    if (debug) printf("Updated file list\n");
 
 }
 
@@ -205,7 +205,7 @@ void send_file_list(){
         bytes_written = write(newsockfd, file_buffer, bytes_read);
         bytes_left-=bytes_written;
     }
-    printf("%d File list Successfully\n",getpid());
+    if (debug) printf("%d File list Successfully\n",getpid());
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);
 }
@@ -220,7 +220,7 @@ bool verify_ack(int left){
 }
 
 void fileSend(){
-    printf("%d ======== File Sending =========\n",getpid());
+    if (debug) printf("%d ======== File Sending =========\n",getpid());
     send_file_list();
     receiveMessage(); //get the choice from client
     int choice=  atoi(strtok(response_message, ","));
@@ -262,7 +262,7 @@ void fileSend(){
             bytes_left-=bytes_written;
             if (debug) printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
         }
-        printf("%s File Sent Successfully \n", filename);
+        if (debug) printf("%s File Sent Successfully \n", filename);
     }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(f);

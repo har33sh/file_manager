@@ -300,7 +300,7 @@ void download(int sockfd){
     fprintf(log_response_time,"1\n");
     fclose(log_response_time);
 
-    printf("%d | %s file Downloaded,  Filesize: %d\n",sockfd , save_file,filesize );
+    if (debug) printf("%d | %s file Downloaded,  Filesize: %d\n",sockfd , save_file,filesize );
 }
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
