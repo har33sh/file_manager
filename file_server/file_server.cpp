@@ -25,8 +25,7 @@ char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list/";
 char file_list_name[BUFFER_SIZE];
 
-bool disable=false;
-bool showall=false;
+bool  debug=false;
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
@@ -41,6 +40,7 @@ char buffer[256],auth_user[100];
 
 
 void error(const char *msg){
+    cerr <<getpid()<<"  "<<msg;
     perror(msg);
     exit(1);
 }
@@ -67,7 +67,7 @@ void establishConenction(){
             (struct sockaddr *) &cli_addr,
             &clilen);
         waitpid(-1, 0, WNOHANG); //zombie handeling
-        if (showall) printf("Proxy Server connected :: Main Process forked \n" );
+        if ( debug) printf("Proxy Server connected :: Main Process forked \n" );
         pid = fork();
         if (newsockfd < 0)
             error("ERROR on accept");
@@ -85,13 +85,13 @@ void establishConenction(){
 
 
 void closeConnection(){
-    if (showall) printf("Closing Connections\n" );
+    if ( debug) printf("Closing Connections\n" );
     try{
         close(newsockfd);
-        if (showall) printf("Closed Proxy Server Connection  \n" );
+        if ( debug) printf("Closed Proxy Server Connection  \n" );
     }
     catch(int e){
-         if (showall) printf("Proxy Server is already closed\n" );
+         if ( debug) printf("Proxy Server is already closed\n" );
     }
     printf("Closed all connections.. killed process %d\n",getpid() );
     exit(0);
@@ -101,7 +101,7 @@ void closeConnection(){
 
 void sendMessage(){
     int bytes_written = write(newsockfd,send_message,strlen(send_message));
-    if (showall)  printf("<-----%d %s\n",bytes_written,send_message);
+    if ( debug)  printf("<-----%d %s\n",bytes_written,send_message);
     if (bytes_written < 0)
         error("ERROR writing to socket ::sendMessage");
 }
@@ -109,7 +109,7 @@ void sendMessage(){
 void receiveMessage(){
     bzero(response_message,BUFFER_SIZE);
     int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
-    if (showall) printf("----->%d %s\n",bytes_read,response_message);
+    if ( debug) printf("----->%d %s\n",bytes_read,response_message);
     if (bytes_read <=0){
         error("ERROR reading from socket :: receiveMessage");
         closeConnection();
@@ -124,7 +124,7 @@ void receiveMessage(){
 
 
 void fileRecieve(){
-    if (showall)  printf("======== File Receiving =========\n");
+    if ( debug)  printf("======== File Receiving =========\n");
     FILE *fp;
     int bytes_left,bytes_read,bytes_written;
     snprintf(send_message,sizeof(send_message),"%s","Started fileReceive()");
@@ -132,10 +132,10 @@ void fileRecieve(){
     receiveMessage();
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
-    if (showall) printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
+    if ( debug) printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
     char file_location[100];
     snprintf(file_location,sizeof(file_location),"%s/%s",file_dir,filename); //can add auth_user here
-    if (showall) printf("file name is %s\n",file_location );
+    if ( debug) printf("file name is %s\n",file_location );
     fp = fopen(file_location, "wb");
     snprintf(send_message, sizeof(send_message), "%s","Ready to recive");
     sendMessage();
@@ -149,13 +149,13 @@ void fileRecieve(){
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
         bytes_left-=bytes_written;
-        if (showall)printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
+        if ( debug)printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
         snprintf(send_message, sizeof(send_message),"%d %d %d",(filesize-bytes_left),filesize,bytes_left);
         sendMessage();
         }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
-    if (showall) printf("Received File: %s Received: %d  Wrote: %d \n",filename,(filesize-bytes_left),filesize );
+    if ( debug) printf("Received File: %s Received: %d  Wrote: %d \n",filename,(filesize-bytes_left),filesize );
     snprintf(response_message, sizeof(response_message), "Received Successfully");
     printf("%d ========End of File Receiving =========\n",getpid());
 }
@@ -197,7 +197,7 @@ void send_file_list(){
     receiveMessage(); //For Sync
     int bytes_read,bytes_written,bytes_left;
     bytes_left=filesize;
-    if (showall) printf("Sending the file list ...... Size %d\n",filesize);
+    if ( debug) printf("Sending the file list ...... Size %d\n",filesize);
     bzero(file_buffer,BUFFER_SIZE);
     while (bytes_left>0){
         bytes_read = fread(file_buffer,sizeof(char), BUFFER_SIZE, f);
@@ -223,10 +223,10 @@ void fileSend(){
     send_file_list();
     receiveMessage(); //get the choice from client
     int choice=  atoi(strtok(response_message, ","));
-    if (showall) printf("input %d\n",choice );
+    if ( debug) printf("input %d\n",choice );
     char filename[100];
     if(choice>max_files){
-      if (showall) printf("Illegal Request" );
+      if ( debug) printf("Illegal Request" );
       return;
     }
     snprintf(filename,sizeof(filename),"%s/%s",file_dir,file_names[choice]); //file abs address
@@ -244,7 +244,7 @@ void fileSend(){
         sendMessage();//sending the file details
 
         bytes_left=fsize;
-        if (showall) printf("Requesting the file FileSize : %d  FileName : %s \n",fsize,filename);
+        if ( debug) printf("Requesting the file FileSize : %d  FileName : %s \n",fsize,filename);
         receiveMessage(); //let it wait
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), min(BUFFER_SIZE,bytes_left), f);
@@ -259,7 +259,7 @@ void fileSend(){
                   break;
                 }
             bytes_left-=bytes_written;
-            if (showall) printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
+            if ( debug) printf("Sent %d of %d\n",(fsize-bytes_left),fsize );
         }
         printf("%s File Sent Successfully \n", filename);
     }
@@ -271,7 +271,7 @@ void fileSend(){
 //process message and sent response
 void onMessage(char *buffers){
     // update_file_list();
-    if (showall) printf("Message Recv : %s\n",buffer);
+    if ( debug) printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
     char *msg2=strtok(NULL, ",");

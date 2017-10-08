@@ -28,7 +28,7 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 #include<signal.h>
-
+#include <iostream>
 #include "db.h"
 
 using namespace std;
@@ -51,7 +51,7 @@ struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
-bool showall=false;
+bool  debug=false;
 
 using namespace std;
 
@@ -70,6 +70,7 @@ void closeConnection();
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 void error(const char *msg){
+    cerr<<getpid() <<"  " <<msg << endl;
     perror(msg);
     exit(1);
 }
@@ -101,7 +102,7 @@ void connectToFileServer(){
 
 void forwardMessage(){
     forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
-    if (showall) printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
+    if ( debug) printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
     if (forwaded_bytes < 0)
         error("ERROR writing to socket :: forwardMessage");
 }
@@ -115,7 +116,7 @@ void recvFileServerMessage(){
         error("ERROR reading from socket :: recvFileServerMessage");
         closeConnection();
     }
-    if (showall) printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
+    if ( debug) printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
     if (fs_recv_bytes==0){
         printf("Server has gone away :: recvFileServerMessage \n" );
         closeConnection();
@@ -164,13 +165,13 @@ void establishConenction(){
     listen(sockfd,5);
     clilen = sizeof(cli_addr);
     pid_t pid;
-    label: printf("Server started... Waiting for connection...\n");
+    label: if( debug)   printf("Server started... Waiting for connection...\n");
     for(;;){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
         waitpid(-1, 0, WNOHANG); //zombie handeling
-        if (showall) printf("Client conneced :: Main process forked\n" );
+        if ( debug) printf("Client conneced :: Main process forked\n" );
         pid = fork();
         if (newsockfd < 0){
             error("ERROR on accept");
@@ -181,7 +182,7 @@ void establishConenction(){
             continue;
         }
         else{
-            printf("Moving the process control for client :: Child %d\n" ,getpid());
+            if( debug)  printf("Moving the process control for client :: Child %d\n" ,getpid());
             connectToFileServer();
             break;
         }
@@ -191,21 +192,21 @@ void establishConenction(){
 
 
 void closeConnection(){ //closes connection with client and proxy server
-    if (showall) printf("Closing Connections\n" );
+    if ( debug) printf("Closing Connections\n" );
     snprintf(send_message,sizeof(send_message),"0,Exiting");
     try{
         // write(sockfd,send_message,sizeof(send_message)); //causes problem
         close(sockfd);
-        if (showall) printf("Closed File Server Connection \n" );
+        if ( debug) printf("Closed File Server Connection \n" );
     }
     catch(int e){
-        if (showall) printf("File server was closed before\n" );
+        if ( debug) printf("File server was closed before\n" );
     }
 
     try{
         write(newsockfd,send_message,sizeof(send_message));
         close(newsockfd);
-        if (showall) printf("Closed Client Connection  \n" );
+        if ( debug) printf("Closed Client Connection  \n" );
     }
     catch(int e){
         printf("Client is already closed\n" );
@@ -221,7 +222,7 @@ void closeConnection(){ //closes connection with client and proxy server
 
 void sendMessage(){
         int bytes_written = write(newsockfd,msg_from_fs,fs_recv_bytes);
-        if (showall) printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
+        if ( debug) printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
@@ -229,7 +230,7 @@ void sendMessage(){
 void receiveMessage(){
     bzero(msg_from_client   ,BUFFER_SIZE);
     bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
-    if (showall) printf("----->%d %s\n",bytes_read,"msg_from_client");
+    if ( debug) printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0){
         error("ERROR reading from socket :: receiveMessage");
         closeConnection();
@@ -242,7 +243,7 @@ void receiveMessage(){
 
 void sendResponseMessage(){
         int bytes_written = write(newsockfd,response_message,20);
-        printf("<-----%d %s %d \n",bytes_written,response_message ,bytes_written);
+        if( debug)  printf("<-----%d %s %d \n",bytes_written,response_message ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
@@ -254,12 +255,13 @@ void sendResponseMessage(){
 
 
 void home_page(){
-  printf("***** User Credentials ***** \n" );
+    if( debug) printf("***** User Credentials ***** \n" );
     start_homepage: receiveMessage();
     char buffer[BUFFER_SIZE];
     bzero(response_message,BUFFER_SIZE);
     snprintf(buffer,sizeof(buffer),"%s",msg_from_client);
-    printf("Message Recv : %s\n",buffer);
+
+    if( debug)  printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *username= strtok(NULL, ",");
     char *password=strtok(NULL, ",");
@@ -284,11 +286,11 @@ void home_page(){
                  break;
 
         case 0: snprintf(msg_from_client,sizeof(msg_from_client),"0, Client Exit");forwardMessage(); closeConnection();
-        default: printf("Root, We have a problem...!\n");
-                 printf("%d %s %s\n",choice,username,password );
+        default: if( debug)  printf("Root, We have a problem...!\n");
+                  if( debug)  printf("%d %s %s\n",choice,username,password );
                  closeConnection();
     }
-    printf("%s\n",response_message );
+    if( debug)  printf("%s\n",response_message );
     sendResponseMessage();
     goto start_homepage;
 }
