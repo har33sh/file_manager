@@ -38,7 +38,7 @@ char HOST[50];
 int PORT;
 #define BUFFER_SIZE 256
 int type_load;
-struct timeval stop, start;
+
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 ////////////////////////////////   Network Layer  \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -137,6 +137,7 @@ bool verify_ack(int left,char response_message[BUFFER_SIZE]){
 
 //upload file
 int upload(int sockfd){
+    struct timeval stop, start;
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 4,"username");
@@ -206,13 +207,7 @@ int min(int x,int y) {
 void load_file_list(int sockfd){
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     receiveMessage(sockfd,response_message);
-    gettimeofday(&stop, NULL);
-    char log_file_name[100];
-    snprintf(log_file_name,sizeof(log_file_name),"response_logs/%d.log",sockfd);
-    FILE *log_response_time= fopen(log_file_name,"a");
-    if ((stop.tv_usec - start.tv_usec )>0)
-      fprintf(log_response_time,"%ld\n", stop.tv_usec - start.tv_usec);
-    fclose(log_response_time);
+
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
     if(debug)
@@ -250,10 +245,10 @@ void load_file_list(int sockfd){
 
 //needs to be checked if it works
 void download(int sockfd){
+    struct timeval stop, start;
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
     snprintf(send_message, sizeof(send_message),"%d,%s", 5,"username");
-    gettimeofday(&start, NULL);
     sendMessage(sockfd,send_message);
     load_file_list(sockfd);
     int choice=3;
@@ -261,10 +256,21 @@ void download(int sockfd){
     snprintf(save_file, sizeof(save_file), "temp/%d_ignore",sockfd);
     if (debug) printf("Downloading... %s\n",save_file);
     snprintf(send_message, sizeof(send_message), "%d,",choice);
+
+
+    gettimeofday(&start, NULL);
     sendMessage(sockfd,send_message); //sending the choice
     if (debug)
         printf("waiting for file details\n" );
     receiveMessage(sockfd,response_message); //gets the file details
+    gettimeofday(&stop, NULL);
+    char log_file_name[100];
+    snprintf(log_file_name,sizeof(log_file_name),"response_logs/%d.log",sockfd);
+    FILE *log_response_time= fopen(log_file_name,"a");
+    if ((stop.tv_usec - start.tv_usec )>0)
+      fprintf(log_response_time,"%ld\n", stop.tv_usec - start.tv_usec);
+    fclose(log_response_time);
+
     int filesize=  atoi(strtok(response_message, ","));
     int bytes_left,bytes_read,bytes_written;
     FILE *fp = fopen(save_file, "wb");
@@ -289,9 +295,8 @@ void download(int sockfd){
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
 
-    char log_file_name[100];
     snprintf(log_file_name,sizeof(log_file_name),"throughput/%d.log",sockfd);
-    FILE *log_response_time= fopen(log_file_name,"a");
+    log_response_time= fopen(log_file_name,"a");
     fprintf(log_response_time,"1\n");
     fclose(log_response_time);
 

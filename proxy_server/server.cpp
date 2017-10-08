@@ -30,6 +30,7 @@
 #include<signal.h>
 #include <iostream>
 #include "db.h"
+#include <sys/prctl.h>
 
 using namespace std;
 
@@ -130,6 +131,8 @@ void recvFileServerMessage(){
 void start_proxy_server(){
     pid_t pid;
     pid = fork();
+    while (waitpid(-1, 0, WNOHANG) > 0)//zombie handeling
+      continue;
     if (pid!=0){ //parent process
         while (true){
             receiveMessage();
@@ -137,6 +140,7 @@ void start_proxy_server(){
         }
     }
     else{ //child process
+        prctl(PR_SET_PDEATHSIG,SIGTERM);
         while(true){
             recvFileServerMessage();
             sendMessage();
@@ -170,9 +174,10 @@ void establishConenction(){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
-        waitpid(-1, 0, WNOHANG); //zombie handeling
         if ( debug) printf("Client conneced :: Main process forked\n" );
         pid = fork();
+        while (waitpid(-1, 0, WNOHANG) > 0)//zombie handeling
+          continue;
         if (newsockfd < 0){
             error("ERROR on accept");
             closeConnection();

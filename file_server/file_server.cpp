@@ -66,9 +66,10 @@ void establishConenction(){
         newsockfd = accept(sockfd,
             (struct sockaddr *) &cli_addr,
             &clilen);
-        waitpid(-1, 0, WNOHANG); //zombie handeling
         if (debug) printf("Proxy Server connected :: Main Process forked \n" );
         pid = fork();
+        while (waitpid(-1, 0, WNOHANG) > 0)//zombie handeling
+          continue;
         if (newsockfd < 0)
             error("ERROR on accept");
         if(pid!=0){
