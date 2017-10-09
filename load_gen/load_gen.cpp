@@ -215,7 +215,11 @@ void load_file_list(int sockfd){
     int bytes_left,bytes_read,bytes_written;
     snprintf(send_message, sizeof(send_message), "%s","Time to download");
     sendMessage(sockfd,send_message);
-    FILE *fp = fopen(".file_list.txt", "wb");
+
+    char file_list_loc[100];
+    snprintf(file_list_loc,sizeof(file_list_loc),"temp/.%dfile_list.txt",sockfd);
+
+    FILE *fp = fopen(file_list_loc, "wb");
     bytes_left=filesize;
     bzero(file_buffer,BUFFER_SIZE);
     while (bytes_left>0){
@@ -235,7 +239,7 @@ void load_file_list(int sockfd){
     if(debug)
         printf("Received File List FileSize: %d Received %d\n",(filesize-bytes_left),filesize);
     char c;
-    fp = fopen(".file_list.txt", "r");
+    fp = fopen(file_list_loc, "r");
     if(debug) printf("\n##### File List ####\n");
     while ((c=fgetc(fp))!=EOF)
       if(debug) printf("%c",c );
