@@ -164,7 +164,7 @@ int upload(int sockfd){
         fseek(f, 0, SEEK_END);
         fsize = ftell(f);
         rewind(f);
-        snprintf(send_message, sizeof(send_message), "%d,%d_ignore", fsize,sockfd);
+        snprintf(send_message, sizeof(send_message), "%d,../dummy/%d_ignore", fsize,sockfd);
         sendMessage(sockfd,send_message);
         bytes_left=fsize;
         if (debug) printf("FileSize : %d  FileName : %s save as : %d_ignore ...... \n",fsize,filename,sockfd);
