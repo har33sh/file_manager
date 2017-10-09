@@ -215,7 +215,7 @@ bool verify_ack(int left){
   sscanf(response_message,"%d %d %d", &success,&total,&remaining);
   if(remaining==left)
     return true;
-  printf("%d %d\n",left,remaining );
+  if (debug) printf("%d %d\n",left,remaining );
   return false;
 }
 
@@ -256,7 +256,7 @@ void fileSend(){
             bytes_written = write(newsockfd, file_buffer, bytes_read);
             receiveMessage();
             if(!verify_ack(bytes_left)){
-                  printf("%d Bad Ack Received\n",getpid() );
+                  if (debug) printf("%d Bad Ack Received\n",getpid() );
                   break;
                 }
             bytes_left-=bytes_written;
