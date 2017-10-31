@@ -102,11 +102,11 @@ void closeConnection(int sockfd){
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 bool verify_ack(int left,char response_message[BUFFER_SIZE]){
-  char *_=  strtok(response_message, ",");
-  int  ack_sent= atoi(strtok(NULL, ","));
-  printf("%d %d\n",left,ack_sent );
-  if(ack_sent==left)
+  int success,total,remaining;
+  sscanf(response_message,"%d %d %d", &success,&total,&remaining);
+  if(remaining==left)
     return true;
+  printf("%d %d\n",left,remaining );
   return false;
 }
 
@@ -114,7 +114,7 @@ bool verify_ack(int left,char response_message[BUFFER_SIZE]){
 int upload(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
-    snprintf(send_message, sizeof(send_message),"%d,%s", 4,username);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 4,"username");
     sendMessage(sockfd,send_message);
     receiveMessage(sockfd,response_message); //ACK
     char filename[BUFFER_SIZE],save_as[BUFFER_SIZE];
@@ -202,7 +202,7 @@ void load_file_list(int sockfd){
 void download(int sockfd){
     char username[20];
     char response_message[BUFFER_SIZE],send_message[BUFFER_SIZE],file_buffer[BUFFER_SIZE];
-    snprintf(send_message, sizeof(send_message),"%d,%s", 5,username);
+    snprintf(send_message, sizeof(send_message),"%d,%s", 5,"username");
     sendMessage(sockfd,send_message);
     load_file_list(sockfd);
     int choice;
@@ -230,7 +230,7 @@ void download(int sockfd){
           printf("%s\n", "Socket cant read");
         }
         bytes_written=fwrite(file_buffer, sizeof(char), bytes_read, fp);
-        snprintf(send_message, sizeof(send_message),"Ack  %d of %d,%d,1",(filesize-bytes_left),filesize,bytes_left);
+        snprintf(send_message, sizeof(send_message),"%d %d %d",(filesize-bytes_left),filesize,bytes_left);
         sendMessage(sockfd,send_message); //Ack Message
         bytes_left-=bytes_written;
         if (debug)
@@ -365,6 +365,7 @@ int main(int argc, char *argv[]){
     PORT=atoi(argv[2]);
     int sockfd= establishConenction();
     menu(sockfd);
+    // file_menu(sockfd);
     closeConnection(sockfd);
     return 0;
 }

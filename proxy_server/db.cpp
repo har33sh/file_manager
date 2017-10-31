@@ -4,12 +4,13 @@
 #include <string>
 #include<string.h>
 #include <stdlib.h>
-#include <iostream>
+#include <errno.h>
 #include "mysql_connection.h"
 #include <cppconn/driver.h>
 #include <cppconn/exception.h>
 #include <cppconn/resultset.h>
 #include <cppconn/statement.h>
+#include<mysql/mysql.h>
 
 #define  IP_ADDR "tcp://10.129.23.200:3306"
 #define  user  "root"
@@ -37,19 +38,19 @@ bool authenticateUser(char *username_arg,char *password_arg){
       string res_passwrd=string(res->getString(1));
       const char *query_password=res_passwrd.c_str();
       const char *given_password=password.c_str();
-      cout << res_passwrd<< endl;
       if (strcmp(query_password,given_password)==0)
           auth=true;
       else
           auth=false;
     }
+
   delete res;
   delete stmt;
   delete con;
 
   }
   catch (sql::SQLException &e) {
-    cout << " (MySQL error code: " << e.getErrorCode();
+    cerr << "DB Auth: "<< " (MySQL error code: " << e.getErrorCode() <<endl;
   }
 
   return auth;
@@ -70,7 +71,6 @@ bool usernameAvailable(char *username_arg){
     stmt = con->createStatement();
     res = stmt->executeQuery("SELECT user_id from users where user_id= '"+username+"' limit 1;");
     while (res->next()) {
-      cout << res->getString(1)<<" ";
       auth=false;
     }
   delete res;
@@ -80,7 +80,7 @@ bool usernameAvailable(char *username_arg){
   }
   catch (sql::SQLException &e) {
     auth=true;
-    cout << " (MySQL error code: " << e.getErrorCode();
+    cerr << "DB Username Avail (ignore) (MySQL error code: " << e.getErrorCode()<<endl;
   }
   return auth;
 
@@ -100,13 +100,14 @@ bool createUser(char *username_arg,char *password_arg){
     con->setSchema(DB_NAME);
     stmt = con->createStatement();
     stmt->executeQuery("insert into users values('"+username+"','"+password+"');");
+
     delete res;
     delete stmt;
     delete con;
     auth=true;
   }
   catch (sql::SQLException &e) {
-
+    cerr << "DB Creating user (MySQL error code: " << e.getErrorCode()<<endl;
   }
   return auth;
 
