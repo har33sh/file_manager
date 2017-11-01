@@ -31,6 +31,7 @@
 #include <iostream>
 #include "db.h"
 #include <sys/prctl.h>
+#include <pthread.h>
 
 using namespace std;
 
@@ -52,7 +53,7 @@ struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
-bool  debug=false;
+bool  debug=true;
 
 using namespace std;
 

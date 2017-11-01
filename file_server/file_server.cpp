@@ -16,7 +16,7 @@
 #include<signal.h>
 
 using namespace std;
-bool  debug=false;
+bool  debug=true;
 
 //config
 // #define PORT 9334
@@ -30,8 +30,8 @@ char file_list[]="/home/ghost/file_list/";
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
-char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
-char buffer[256],auth_user[100];
+
+char buffer[256];
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -100,38 +100,29 @@ void closeConnection(){
 
 
 
-void sendMessage(){
-    int bytes_written = write(newsockfd,send_message,strlen(send_message));
-    if (debug)  printf("<-----%d %s\n",bytes_written,send_message);
-    if (bytes_written < 0)
-        error("ERROR writing to socket ::sendMessage");
-}
-
-void receiveMessage(){
-    bzero(response_message,BUFFER_SIZE);
-    int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
-    if (debug) printf("----->%d %s\n",bytes_read,response_message);
-    if (bytes_read <=0){
-        error("ERROR reading from socket :: receiveMessage");
-        closeConnection();
-    }
-}
-
-
-
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 //////////////////////////////// Data Access Layer///////////////////////////////////////////////
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 
 void fileRecieve(){
-    char file_buffer[BUFFER_SIZE];
+    char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
     if (debug)  printf("======== File Receiving =========\n");
     FILE *fp;
     int bytes_left,bytes_read,bytes_written;
     snprintf(send_message,sizeof(send_message),"%s","Started fileReceive()");
-    sendMessage();
-    receiveMessage();
+
+    bytes_written = write(newsockfd,send_message,strlen(send_message));
+    if (debug)  printf("<-----%d %s\n",bytes_written,send_message);
+
+    bzero(response_message,BUFFER_SIZE);
+    bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+    if (debug) printf("----->%d %s\n",bytes_read,response_message);
+    if (bytes_read <=0){
+        error("ERROR reading from socket :: receiveMessage");
+        closeConnection();
+    }
+
     int filesize=  atoi(strtok(response_message, ","));
     char *filename= strtok(NULL, ",");
     if (debug) printf("\tReceiving File: %s FileSize: %d\n",filename,filesize);
@@ -140,7 +131,10 @@ void fileRecieve(){
     if (debug) printf("file name is %s\n",file_location );
     fp = fopen(file_location, "wb");
     snprintf(send_message, sizeof(send_message), "%s","Ready to recive");
-    sendMessage();
+
+    bytes_written = write(newsockfd,send_message,strlen(send_message));
+    if (debug)  printf("<-----%d %s\n",bytes_written,send_message);
+
     bzero(file_buffer,BUFFER_SIZE);
     bytes_left=filesize;
     while (bytes_left>0){
@@ -153,7 +147,9 @@ void fileRecieve(){
         bytes_left-=bytes_written;
         if (debug)printf("-----> Receiving %d of %d\n",(filesize-bytes_left),filesize );
         snprintf(send_message, sizeof(send_message),"%d %d %d",(filesize-bytes_left),filesize,bytes_left);
-        sendMessage();
+        bytes_written = write(newsockfd,send_message,strlen(send_message));
+        if (debug)  printf("<-----%d %s\n",bytes_written,send_message);
+
         }
     bzero(file_buffer,BUFFER_SIZE);
     fclose(fp);
@@ -166,11 +162,11 @@ void fileRecieve(){
 
 void send_file_list(){
 
-    char file_buffer[BUFFER_SIZE],file_names[1000][100];
+    char file_buffer[BUFFER_SIZE],file_names[1000][100],response_message[BUFFER_SIZE];
 
     //read the files in the entire directory, saves it in a array and saves it in file_list
     //update file list
-    char file_list_name[BUFFER_SIZE];
+    char file_list_name[BUFFER_SIZE],send_message[BUFFER_SIZE];
     DIR *d;
     struct dirent *dir;
     d = opendir(file_dir);
@@ -198,10 +194,19 @@ void send_file_list(){
     int filesize = ftell(f);
     rewind(f);
     snprintf(send_message, sizeof(send_message), "%d,%s", filesize,"file_list");
-    sendMessage();
-    receiveMessage(); //For Sync
-    int bytes_read,bytes_written,bytes_left;
-    bytes_left=filesize;
+
+    int bytes_written = write(newsockfd,send_message,strlen(send_message));
+    if (debug)  printf("<-----%d %s\n",bytes_written,send_message);
+
+    bzero(response_message,BUFFER_SIZE);
+    int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+    if (debug) printf("----->%d %s\n",bytes_read,response_message);
+    if (bytes_read <=0){
+        error("ERROR reading from socket :: receiveMessage");
+        closeConnection();
+    }
+     //For Sync
+    int  bytes_left=filesize;
     if (debug) printf("Sending the file list ...... Size %d\n",filesize);
     bzero(file_buffer,BUFFER_SIZE);
     while (bytes_left>0){
@@ -216,6 +221,8 @@ void send_file_list(){
 
 bool verify_ack(int left){
   int success,total,remaining;
+  char response_message[BUFFER_SIZE];
+
   sscanf(response_message,"%d %d %d", &success,&total,&remaining);
   if(remaining==left)
     return true;
@@ -224,11 +231,17 @@ bool verify_ack(int left){
 }
 
 void fileSend(){
-    char file_buffer[BUFFER_SIZE],file_list_name[BUFFER_SIZE];
+    char file_buffer[BUFFER_SIZE],file_list_name[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 
     if (debug) printf("%d ======== File Sending =========\n",getpid());
     send_file_list();
-    receiveMessage(); //get the choice from client
+    bzero(response_message,BUFFER_SIZE);
+    int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+    if (debug) printf("----->%d %s\n",bytes_read,response_message);
+    if (bytes_read <=0){
+        error("ERROR reading from socket :: receiveMessage");
+        closeConnection();
+    } //get the choice from client
     int choice=  atoi(strtok(response_message, ","));
     if (debug) printf("input %d\n",choice );
     char filename[100];
@@ -237,7 +250,7 @@ void fileSend(){
       return;
     }
     snprintf(filename,sizeof(filename),"%s/%s",file_dir,"ab.txt"); //file abs address //FIX this..!!
-    int fsize,bytes_read,bytes_written,bytes_left;
+    int fsize,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
     if (f == NULL)
@@ -248,11 +261,18 @@ void fileSend(){
         fsize = ftell(f);
         rewind(f);
         snprintf(send_message, sizeof(send_message), "%d,%s", fsize,"ab.txt");//FIX this..!!
-        sendMessage();//sending the file details
+        bytes_written = write(newsockfd,send_message,strlen(send_message));
+        if (debug)  printf("<-----%d %s\n",bytes_written,send_message);//sending the file details
 
         bytes_left=fsize;
         if (debug) printf("Requesting the file FileSize : %d  FileName : %s \n",fsize,filename);
-        receiveMessage(); //let it wait
+        bzero(response_message,BUFFER_SIZE);
+        int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+        if (debug) printf("----->%d %s\n",bytes_read,response_message);
+        if (bytes_read <=0){
+            error("ERROR reading from socket :: receiveMessage");
+            closeConnection();
+        } //let it wait
         while (bytes_left>0){
             bytes_read = fread(file_buffer,sizeof(char), min(BUFFER_SIZE,bytes_left), f);
             if (bytes_read <=0){
@@ -260,7 +280,13 @@ void fileSend(){
                 closeConnection();
             }
             bytes_written = write(newsockfd, file_buffer, bytes_read);
-            receiveMessage();
+            bzero(response_message,BUFFER_SIZE);
+            int bytes_read=read(newsockfd,response_message,BUFFER_SIZE);
+            if (debug) printf("----->%d %s\n",bytes_read,response_message);
+            if (bytes_read <=0){
+                error("ERROR reading from socket :: receiveMessage");
+                closeConnection();
+            }
             if(!verify_ack(bytes_left)){
                   if (debug) printf("%d Bad Ack Received\n",getpid() );
                   break;
@@ -277,12 +303,15 @@ void fileSend(){
 
 //process message and sent response
 void onMessage(char *buffers){
+    char response_message[BUFFER_SIZE], buffer[BUFFER_SIZE];
+    snprintf(buffer, sizeof(buffer), buffers);
+
     // update_file_list();
     if (debug) printf("Message Recv : %s\n",buffer);
     int choice=  atoi(strtok(buffer, ","));
     char *msg1= strtok(NULL, ",");      //Assuming there are only 3 arg passed...
     char *msg2=strtok(NULL, ",");
-    snprintf(auth_user, sizeof(auth_user),"%s",msg1);
+    // snprintf(auth_user, sizeof(auth_user),"%s",msg1);
     // printf("///%s\n",auth_user );
     snprintf(response_message, sizeof(response_message), "--No message--");
     switch (choice) {
@@ -302,8 +331,9 @@ void onMessage(char *buffers){
 void start_server(){
         int n;
         while(true){
-            bzero(buffer,256);
-            n = read(newsockfd,buffer,255);
+            char buffer[BUFFER_SIZE];
+            bzero(buffer,BUFFER_SIZE);
+            n = read(newsockfd,buffer,BUFFER_SIZE);
             if (n <= 0) {error("ERROR reading from socket :: Start Server"); closeConnection(); }
             onMessage(buffer);
             if (n <= 0) error("ERROR writing to socket :: Start Server");
