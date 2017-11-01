@@ -16,6 +16,7 @@
 #include<signal.h>
 
 using namespace std;
+bool  debug=false;
 
 //config
 // #define PORT 9334
@@ -23,14 +24,13 @@ int PORT;
 #define BUFFER_SIZE 256
 char file_dir[]="/home/ghost/Downloads/Data";
 char file_list[]="/home/ghost/file_list/";
-char file_list_name[BUFFER_SIZE];
 
-bool  debug=false;
+
 //Global paramaters
 int sockfd, newsockfd, portno,max_files=0;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
-char file_buffer[BUFFER_SIZE],send_message[BUFFER_SIZE],response_message[BUFFER_SIZE],file_names[1000][100];
+char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[256],auth_user[100];
 
 
@@ -125,6 +125,7 @@ void receiveMessage(){
 
 
 void fileRecieve(){
+    char file_buffer[BUFFER_SIZE];
     if (debug)  printf("======== File Receiving =========\n");
     FILE *fp;
     int bytes_left,bytes_read,bytes_written;
@@ -162,13 +163,18 @@ void fileRecieve(){
 }
 
 
-//read the files in the entire directory, saves it in a array and saves it in file_list
-void update_file_list(){
+
+void send_file_list(){
+
+    char file_buffer[BUFFER_SIZE],file_names[1000][100];
+
+    //read the files in the entire directory, saves it in a array and saves it in file_list
+    //update file list
+    char file_list_name[BUFFER_SIZE];
     DIR *d;
     struct dirent *dir;
     d = opendir(file_dir);
     FILE *f;
-
     snprintf(file_list_name,sizeof(file_list_name),"%s%d.txt",file_list,getpid());
     f=fopen(file_list_name,"w");
     int i=1;
@@ -184,12 +190,10 @@ void update_file_list(){
     closedir(d);
     fclose(f);
     if (debug) printf("Updated file list\n");
+    //End of file upload
 
-}
 
-void send_file_list(){
-    update_file_list();
-    FILE *f= fopen(file_list_name, "rb");
+    f= fopen(file_list_name, "rb");
     fseek(f, 0, SEEK_END);
     int filesize = ftell(f);
     rewind(f);
@@ -220,6 +224,8 @@ bool verify_ack(int left){
 }
 
 void fileSend(){
+    char file_buffer[BUFFER_SIZE],file_list_name[BUFFER_SIZE];
+
     if (debug) printf("%d ======== File Sending =========\n",getpid());
     send_file_list();
     receiveMessage(); //get the choice from client
@@ -230,7 +236,7 @@ void fileSend(){
       if (debug) printf("Illegal Request" );
       return;
     }
-    snprintf(filename,sizeof(filename),"%s/%s",file_dir,file_names[choice]); //file abs address
+    snprintf(filename,sizeof(filename),"%s/%s",file_dir,"ab.txt"); //file abs address //FIX this..!!
     int fsize,bytes_read,bytes_written,bytes_left;
     bzero(file_buffer,BUFFER_SIZE);
     FILE *f= fopen(filename, "rb");
@@ -241,7 +247,7 @@ void fileSend(){
         fseek(f, 0, SEEK_END);
         fsize = ftell(f);
         rewind(f);
-        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,file_names[choice]);
+        snprintf(send_message, sizeof(send_message), "%d,%s", fsize,"ab.txt");//FIX this..!!
         sendMessage();//sending the file details
 
         bytes_left=fsize;
