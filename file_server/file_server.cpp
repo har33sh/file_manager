@@ -47,6 +47,7 @@ void error(const char *msg,int socket){
     cerr<<"Error! Process ID : " <<getpid()<<"  "<<msg<<"   Socket:"<<socket<<endl;
     // Need to close the sockets and the threads that cause the error
     close(socket);
+    pthread_exit(0);
 }
 
 //socket, bind, listen

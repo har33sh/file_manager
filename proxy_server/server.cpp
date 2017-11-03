@@ -39,21 +39,20 @@ using namespace std;
 // #define FILE_SERVER "10.129.23.200"
 // #define FILE_SERVER_PORT 9334
 // #define PORT 4334
+bool  debug=true,show_msg=false;
+char file_list[]="/home/ghost/file_list/";
+char file_dir[]="/home/ghost/Downloads/Data";
 int FILE_SERVER_PORT,PORT;
 char FILE_SERVER[50];
 #define BUFFER_SIZE 256
-char file_dir[]="/home/ghost/Downloads/Data";
-char file_list[]="/home/ghost/file_list/";
 
 
 //Global paramaters
-int client_reconnnect=100,server_reconnect=100;
 int sockfd, newsockfd, portno;
 struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
-char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
+char send_msg[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
-bool  debug=true;
 
 using namespace std;
 
@@ -72,10 +71,29 @@ void closeConnection();
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
 
 void error(const char *msg){
-    cerr<<getpid() <<"  " <<msg << endl;
-    perror(msg);
-    exit(1);
+cerr<<getpid() <<"  " <<msg << endl;
+perror(msg);
+exit(1);
 }
+
+int send_message(int socket_id,const char *message,int length){
+  int bytes_written = write(socket_id,message,length);
+  if (debug)  cout<<"<----" <<(bytes_written==length);
+  if(show_msg)  cout<< " Message : "<<message<<endl;
+  return bytes_written;
+}
+
+int recv_message(int socket_id,char *message){
+  bzero(message,BUFFER_SIZE);
+  int bytes_read=read(socket_id,message,BUFFER_SIZE);
+  if (debug) cout<<"----->"<<bytes_read;
+  if(show_msg) cout<< "Message :"<< message<<endl;
+  if (bytes_read <=0){
+      error("ERROR reading from socket :: receiveMessage");
+  }
+  return bytes_read;
+}
+
 //////////////////////////////File Sever Connection ////////////////////////////////////////////////
 
 char msg_from_client[BUFFER_SIZE],msg_from_fs[BUFFER_SIZE];
@@ -127,26 +145,45 @@ void recvFileServerMessage(){
 
 
 
-
+void forw(){
+  while(true){
+    receiveMessage();
+    forwardMessage();
+  }
+}
+void rev(){
+  while(true){
+    recvFileServerMessage();
+    sendMessage();
+  }
+}
 //forwards download request to file server
 void start_proxy_server(){
-    pid_t pid;
-    pid = fork();
-    while (waitpid(-1, 0, WNOHANG) > 0)//zombie handeling
-      continue;
-    if (pid!=0){ //parent process
-        while (true){
-            receiveMessage();
-            forwardMessage();
-        }
-    }
-    else{ //child process
-        prctl(PR_SET_PDEATHSIG,SIGTERM);
-        while(true){
-            recvFileServerMessage();
-            sendMessage();
-        }
-    }
+  pid_t pid;
+  pthread_t forward,reverse;
+  if(pthread_create(forward, NULL, forw, (void *)0)==0){
+    printf("11111111\n" );
+    forw();
+  }
+  else{
+    printf("2222222222\n" );
+    rev();
+  }
+    // { //parent process
+    //     while (true){
+    //       char temp[BUFFER_SIZE];
+    //       // int len =recv_message(newsockfd,temp);
+    //       // send_message(sockfd,temp,len);
+    //
+    //     }
+    // }
+    // else{ //child process
+    //   if(pthread_create(reverse, NULL, start_threads, (void *)i)==0)
+    //   while(true){
+    //       // recv_message()
+    //
+    //     }
+    // }
 
 }
 
@@ -199,9 +236,9 @@ void establishConenction(){
 
 void closeConnection(){ //closes connection with client and proxy server
     if ( debug) printf("Closing Connections\n" );
-    snprintf(send_message,sizeof(send_message),"0,Exiting");
+    snprintf(send_msg,sizeof(send_msg),"0,Exiting");
     try{
-        // write(sockfd,send_message,sizeof(send_message)); //causes problem
+        // write(sockfd,send_msg,sizeof(send_msg)); //causes problem
         close(sockfd);
         if ( debug) printf("Closed File Server Connection \n" );
     }
@@ -210,7 +247,7 @@ void closeConnection(){ //closes connection with client and proxy server
     }
 
     try{
-        write(newsockfd,send_message,sizeof(send_message));
+        write(newsockfd,send_msg,sizeof(send_msg));
         close(newsockfd);
         if ( debug) printf("Closed Client Connection  \n" );
     }
