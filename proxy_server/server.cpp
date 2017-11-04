@@ -56,8 +56,8 @@ struct sockaddr_in file_serv_addr;
 struct hostent *fileserver;
 
 //declarations
-void receiveMessage(int,char*);
-void sendMessage(int,char*);
+void recv_message(int,char*);
+void send_message(int,char*);
 int home_page(int);
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -70,9 +70,6 @@ void error(const char *msg){
     exit(1);
 }
 //////////////////////////////File Sever Connection ////////////////////////////////////////////////
-
-char msg_from_client[BUFFER_SIZE],msg_from_fs[BUFFER_SIZE];
-int forwaded_bytes,fs_recv_bytes,bytes_read;
 
 //Establish connection to server
 int connectToFileServer(){
@@ -97,15 +94,15 @@ int connectToFileServer(){
 
 
 void forwardMessage(int sockfd_file, char *msg_from_client){
-    forwaded_bytes = write(sockfd_file,msg_from_client,bytes_read);
-    if ( debug) printf("\t----->%d %s %d\n",forwaded_bytes,"msg_to_fs", bytes_read);
+    int forwaded_bytes = write(sockfd_file,msg_from_client,strlen(msg_from_client));
+    if ( debug) printf("\t----->%d %s\n",forwaded_bytes,"msg_to_fs");
     if (forwaded_bytes < 0)
         error("ERROR writing to socket :: forwardMessage");
 }
 
 void recvFileServerMessage(int sockfd_file,char *msg_from_fs){
     bzero(msg_from_fs,BUFFER_SIZE);
-    fs_recv_bytes=0;
+    int fs_recv_bytes=0;
     while (fs_recv_bytes==0)
       fs_recv_bytes=read(sockfd_file,msg_from_fs,BUFFER_SIZE);
     if (fs_recv_bytes < 0){
@@ -120,29 +117,51 @@ void recvFileServerMessage(int sockfd_file,char *msg_from_fs){
 }
 
 
+struct args{
+ int sock_cli;
+ int sock_file;
+};
+
+void *forwader(void *a){
+  printf("****************************************\n" );
+  struct args *arg=(struct args*)a;
+  int sock_file=arg->sock_file;
+  int sock_cli=arg->sock_cli;
+  char buffer[BUFFER_SIZE];
+  while(true){
+    recv_message(sock_cli,buffer);
+    forwardMessage(sock_file,buffer);
+  }
+}
+void *rev_forwader(void *a){
+  printf("000000000000000000000000000000000000000\n" );
+  struct args *arg=(struct args*)a;
+  int sock_file=arg->sock_file;
+  int sock_cli=arg->sock_cli;
+  char buffer[BUFFER_SIZE];
+  while(true){
+    recvFileServerMessage(sock_file,buffer);
+    send_message(sock_cli,buffer);
+  }
+}
 
 
 //forwards download request to file server
 void start_proxy_server(int sockfd_file,int newsockfd){
-    pid_t pid;
-    pid = fork();
-    char buffer[BUFFER_SIZE];
-    while (waitpid(-1, 0, WNOHANG) > 0)//zombie handeling
-      continue;
-    if (pid!=0){ //parent process
-        while (true){
-            receiveMessage(newsockfd,buffer);
-            forwardMessage(sockfd_file,buffer);
-        }
-    }
-    else{ //child process
-        prctl(PR_SET_PDEATHSIG,SIGTERM);
-        while(true){
-            recvFileServerMessage(sockfd_file,buffer);
-            sendMessage(newsockfd,buffer);
-        }
-    }
-
+  pthread_t frwd,rev;
+  struct args *a1;
+  a1=(args*)malloc(sizeof(struct args));
+  a1->sock_file=sockfd_file;
+  a1->sock_cli=newsockfd;
+  pthread_create(&frwd,NULL,forwader,a1);
+  // pthread_create(&rev,NULL,rev_forwader,a1);
+  int sock_file=a1->sock_file;
+  int sock_cli=a1->sock_cli;
+  char buffer[BUFFER_SIZE];
+  while(true){
+    recvFileServerMessage(sock_file,buffer);
+    send_message(sock_cli,buffer);
+  }
 }
 
 
@@ -193,23 +212,23 @@ int establishConenction(){
 
 
 
-void sendMessage(int newsockfd,char *msg_from_fs){
-        int bytes_written = write(newsockfd,msg_from_fs,fs_recv_bytes);
+void send_message(int newsockfd,char *msg_from_fs){
+        int bytes_written = write(newsockfd,msg_from_fs,strlen(msg_from_fs));
         if ( debug) printf("<-----%d %s %d \n",bytes_written,"msg_to_client" ,bytes_written);
         if (bytes_written < 0)
             error("ERROR writing to socket");
 }
 
-void receiveMessage(int newsockfd,char *msg_from_client){
+void recv_message(int newsockfd,char *msg_from_client){
     bzero(msg_from_client   ,BUFFER_SIZE);
-    bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
+    int bytes_read=read(newsockfd,msg_from_client,BUFFER_SIZE);
     if ( debug) printf("----->%d %s\n",bytes_read,"msg_from_client");
     if (bytes_read < 0){
-        error("ERROR reading from socket :: receiveMessage");
+        error("ERROR reading from socket :: recv_message");
         close(newsockfd);
     }
     if(bytes_read==0){
-        printf("Client has gone away..!! :: receiveMessage\n" );
+        printf("Client has gone away..!! :: recv_message\n" );
         close(newsockfd);
     }
 }
@@ -232,7 +251,7 @@ int home_page(int newsockfd){
     if( debug) printf("***** User Credentials ***** \n" );
     char buffer[BUFFER_SIZE],response_message[BUFFER_SIZE], msg_from_client[BUFFER_SIZE];
     bzero(response_message,BUFFER_SIZE);
-    start_homepage: receiveMessage(newsockfd,msg_from_client);
+    start_homepage: recv_message(newsockfd,msg_from_client);
     snprintf(buffer,sizeof(buffer),"%s",msg_from_client);
 
     if( debug)  printf("Message Recv : %s\n",buffer);
