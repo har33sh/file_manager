@@ -36,24 +36,21 @@
 using namespace std;
 
 //config
-
-int FILE_SERVER_PORT,PORT;
-char FILE_SERVER[50];
+bool  debug=true;
 #define BUFFER_SIZE 256
-char file_dir[]="/home/ghost/Downloads/Data";
-char file_list[]="/home/ghost/file_list/";
 
 
 //Global paramaters
+int FILE_SERVER_PORT,PORT;
+char FILE_SERVER[50];
 struct sockaddr_in serv_addr, cli_addr;
+char file_dir[]="/home/ghost/Downloads/Data";
+char file_list[]="/home/ghost/file_list/";
 socklen_t clilen;
-bool  debug=true;
-
-using namespace std;
-
-// int sockfd_file;
 struct sockaddr_in file_serv_addr;
 struct hostent *fileserver;
+
+using namespace std;
 
 //declarations
 void recv_message(int,char*);
@@ -93,54 +90,28 @@ int connectToFileServer(){
 }
 
 
-void forwardMessage(int sockfd_file, char *msg_from_client){
-    int forwaded_bytes = write(sockfd_file,msg_from_client,strlen(msg_from_client));
-    if ( debug) printf("\t----->%d %s\n",forwaded_bytes,"msg_to_fs");
-    if (forwaded_bytes < 0)
-        error("ERROR writing to socket :: forwardMessage");
-}
-
-void recvFileServerMessage(int sockfd_file,char *msg_from_fs){
-    bzero(msg_from_fs,BUFFER_SIZE);
-    int fs_recv_bytes=0;
-    while (fs_recv_bytes==0)
-      fs_recv_bytes=read(sockfd_file,msg_from_fs,BUFFER_SIZE);
-    if (fs_recv_bytes < 0){
-        error("ERROR reading from socket :: recvFileServerMessage");
-        close(sockfd_file);
-    }
-    if ( debug) printf("\t<-----%d %s \n",fs_recv_bytes,"msg_from_fs");
-    if (fs_recv_bytes==0){
-        printf("Server has gone away :: recvFileServerMessage \n" );
-        close(sockfd_file);
-    }
-}
-
-
 struct args{
  int sock_cli;
  int sock_file;
 };
 
-void *forwader(void *a){
-  printf("****************************************\n" );
+void *client_to_server(void *a){
   struct args *arg=(struct args*)a;
   int sock_file=arg->sock_file;
   int sock_cli=arg->sock_cli;
   char buffer[BUFFER_SIZE];
   while(true){
     recv_message(sock_cli,buffer);
-    forwardMessage(sock_file,buffer);
+    send_message(sock_file,buffer);
   }
 }
-void *rev_forwader(void *a){
-  printf("000000000000000000000000000000000000000\n" );
+void *server_to_client(void *a){
   struct args *arg=(struct args*)a;
   int sock_file=arg->sock_file;
   int sock_cli=arg->sock_cli;
   char buffer[BUFFER_SIZE];
   while(true){
-    recvFileServerMessage(sock_file,buffer);
+    recv_message(sock_file,buffer);
     send_message(sock_cli,buffer);
   }
 }
@@ -153,15 +124,10 @@ void start_proxy_server(int sockfd_file,int newsockfd){
   a1=(args*)malloc(sizeof(struct args));
   a1->sock_file=sockfd_file;
   a1->sock_cli=newsockfd;
-  pthread_create(&frwd,NULL,forwader,a1);
-  // pthread_create(&rev,NULL,rev_forwader,a1);
-  int sock_file=a1->sock_file;
-  int sock_cli=a1->sock_cli;
-  char buffer[BUFFER_SIZE];
-  while(true){
-    recvFileServerMessage(sock_file,buffer);
-    send_message(sock_cli,buffer);
-  }
+  pthread_create(&frwd,NULL,client_to_server,a1);
+  pthread_create(&rev,NULL,server_to_client,a1);
+  pthread_join(frwd,NULL);
+  pthread_join(rev,NULL);
 }
 
 
@@ -203,7 +169,6 @@ int establishConenction(){
         }
         else{
             if( debug)  printf("Moving the process control for client :: Child %d\n" ,getpid());
-            // connectToFileServer();
             return newsockfd;
         }
     }
@@ -233,12 +198,6 @@ void recv_message(int newsockfd,char *msg_from_client){
     }
 }
 
-void sendResponseMessage(int newsockfd, char *response_message){
-        int bytes_written = write(newsockfd,response_message,20);
-        if( debug)  printf("<-----%d %s %d \n",bytes_written,response_message ,bytes_written);
-        if (bytes_written < 0)
-            error("ERROR writing to socket");
-}
 
 
 //\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\
@@ -271,7 +230,7 @@ int home_page(int newsockfd){
                  break;
         case 3: if (authenticateUser(username,password)){
                     snprintf(response_message,sizeof(response_message),"true");
-                    sendResponseMessage(newsockfd,response_message);
+                    send_message(newsockfd,response_message);
                     return sockfd_file;
                     }
                  else
@@ -279,7 +238,7 @@ int home_page(int newsockfd){
                  break;
 
         case 0: snprintf(msg_from_client,sizeof(msg_from_client),"0, Client Exit");
-                forwardMessage(sockfd_file,msg_from_client);
+                send_message(sockfd_file,msg_from_client);
                 close(sockfd_file);
                 close(newsockfd);
         default: if( debug)  printf("Root, We have a problem...!\n");
@@ -288,7 +247,7 @@ int home_page(int newsockfd){
                   close(newsockfd);
     }
     if( debug)  printf("%s\n",response_message );
-    sendResponseMessage(newsockfd,response_message);
+    send_message(newsockfd,response_message);
     goto start_homepage;
     return -1;
 }
