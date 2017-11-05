@@ -53,7 +53,7 @@ struct sockaddr_in serv_addr, cli_addr;
 socklen_t clilen;
 char send_message[BUFFER_SIZE],response_message[BUFFER_SIZE];
 char buffer[BUFFER_SIZE],auth_user[100];
-bool  debug=true;
+bool  debug=false;
 
 using namespace std;
 
